@@ -47,47 +47,50 @@ export function Gauge({
 
   return (
     <div className={cn("flex flex-col items-center gap-1.5", className)}>
-    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={thickness}
-          className="stroke-surface-2"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          strokeWidth={thickness}
-          strokeLinecap={pct > 0 ? "round" : "butt"}
-          strokeDasharray={`${dash} ${c}`}
-          className={cn(stroke[level], "transition-[stroke-dasharray] duration-500")}
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-content-center text-center">
-        <span className={cn("numerals font-bold leading-none", text[level])} style={{ fontSize: size * 0.26 }}>
-          {Math.round(pct)}%
-        </span>
-        <span className="mt-0.5 text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
-          {label}
-        </span>
-        {sub ? <span className="numerals text-[0.6rem] text-muted-foreground">{sub}</span> : null}
+      <div className="relative grid place-items-center" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            strokeWidth={thickness}
+            className="stroke-surface-2"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            strokeWidth={thickness}
+            strokeLinecap={pct > 0 ? "round" : "butt"}
+            strokeDasharray={`${dash} ${c}`}
+            className={cn(stroke[level], "transition-[stroke-dasharray] duration-500")}
+          />
+        </svg>
+        <div className="absolute inset-0 grid place-content-center text-center">
+          <span
+            className={cn("numerals font-bold leading-none", text[level])}
+            style={{ fontSize: size * 0.26 }}
+          >
+            {Math.round(pct)}%
+          </span>
+          <span className="mt-0.5 text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+            {label}
+          </span>
+          {sub ? <span className="numerals text-[0.6rem] text-muted-foreground">{sub}</span> : null}
+        </div>
       </div>
-    </div>
-    {showReset ? (
-      <div className="max-w-full text-center leading-tight">
-        {resetIn && resetIn !== "—" ? (
-          <p className="numerals text-[0.62rem] font-semibold text-foreground">{resetIn} left</p>
-        ) : null}
-        {resetAt && resetAt !== "—" ? (
-          <p className="numerals text-[0.58rem] text-muted-foreground">resets {resetAt}</p>
-        ) : null}
-      </div>
-    ) : null}
+      {showReset ? (
+        <div className="max-w-full text-center leading-tight">
+          {resetIn && resetIn !== "—" ? (
+            <p className="numerals text-[0.62rem] font-semibold text-foreground">{resetIn} left</p>
+          ) : null}
+          {resetAt && resetAt !== "—" ? (
+            <p className="numerals text-[0.58rem] text-muted-foreground">resets {resetAt}</p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -128,11 +131,15 @@ export function Bar({
         >
           {label}
         </span>
-        <span className={cn("numerals shrink-0 font-semibold", compact ? "text-[0.6rem]" : "text-xs")}>
+        <span
+          className={cn("numerals shrink-0 font-semibold", compact ? "text-[0.6rem]" : "text-xs")}
+        >
           {right ?? `${Math.round(pct)}%`}
         </span>
       </div>
-      <div className={cn("mt-1 overflow-hidden rounded-full bg-surface-2", compact ? "h-1.5" : "h-2")}>
+      <div
+        className={cn("mt-1 overflow-hidden rounded-full bg-surface-2", compact ? "h-1.5" : "h-2")}
+      >
         <div
           className={cn("h-full rounded-full transition-[width] duration-500", fill)}
           style={{ width: `${Math.min(100, pct)}%` }}

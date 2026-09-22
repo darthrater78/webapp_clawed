@@ -17,10 +17,18 @@ import path from "node:path";
 
 const config = path.join(import.meta.dirname, "..", "wrangler.jsonc");
 const placeholder = "REPLACE_WITH_KV_NAMESPACE_ID";
-const wranglerBin = path.join(import.meta.dirname, "..", "node_modules", "wrangler", "bin", "wrangler.js");
+const wranglerBin = path.join(
+  import.meta.dirname,
+  "..",
+  "node_modules",
+  "wrangler",
+  "bin",
+  "wrangler.js",
+);
 
 function wrangler(args, { input, quiet } = {}) {
-  if (!existsSync(wranglerBin)) fail("Wrangler is not installed. Run `npm ci` in the worker folder first.");
+  if (!existsSync(wranglerBin))
+    fail("Wrangler is not installed. Run `npm ci` in the worker folder first.");
   const result = spawnSync(process.execPath, [wranglerBin, ...args, "--config", config], {
     encoding: "utf8",
     input,
@@ -41,7 +49,10 @@ function fail(message) {
 }
 
 function requireLogin() {
-  if (!wrangler(["whoami"], { quiet: true }).ok) fail("Wrangler can't authenticate. Export CLOUDFLARE_API_TOKEN (and CLOUDFLARE_ACCOUNT_ID), or run `npx wrangler login`.");
+  if (!wrangler(["whoami"], { quiet: true }).ok)
+    fail(
+      "Wrangler can't authenticate. Export CLOUDFLARE_API_TOKEN (and CLOUDFLARE_ACCOUNT_ID), or run `npx wrangler login`.",
+    );
 }
 
 async function ensureKvNamespace() {
@@ -49,7 +60,9 @@ async function ensureKvNamespace() {
   if (!text.includes(placeholder)) return;
   const listed = wrangler(["kv", "namespace", "list"], { quiet: true });
   if (!listed.ok) fail("Could not list KV namespaces.");
-  const existing = jsonFrom(listed.out).find((ns) => ["USAGE_KV", "clawdmeter-usage-USAGE_KV"].includes(ns.title));
+  const existing = jsonFrom(listed.out).find((ns) =>
+    ["USAGE_KV", "clawdmeter-usage-USAGE_KV"].includes(ns.title),
+  );
   let id = existing?.id;
   if (id) {
     console.log(`Reusing KV namespace ${existing.title} (${id}).`);
@@ -72,8 +85,14 @@ async function health(url) {
 }
 
 function reportHealth(url, state) {
-  if (!state) return console.log(`Could not reach ${url}/api/health yet — try \`npm run status -- ${url}\` in a minute.`);
-  if (!Array.isArray(state.missing)) return console.log("That Worker has no /api/health — it predates this version. Redeploy with `npm run deploy`.");
+  if (!state)
+    return console.log(
+      `Could not reach ${url}/api/health yet — try \`npm run status -- ${url}\` in a minute.`,
+    );
+  if (!Array.isArray(state.missing))
+    return console.log(
+      "That Worker has no /api/health — it predates this version. Redeploy with `npm run deploy`.",
+    );
   if (state.ok) return console.log("✔ Worker is fully configured.");
   console.log(`Still to set: ${state.missing.join(", ")}`);
   console.log("When you have them: npm run configure -- --origin https://<your-app-origin>");
@@ -92,19 +111,25 @@ async function deploy() {
 }
 
 function parseOrigins(value) {
-  return value.split(",").map((raw) => {
-    const trimmed = raw.trim().replace(/\/+$/, "");
-    let parsed;
-    try {
-      parsed = new URL(trimmed);
-    } catch {
-      fail(`"${trimmed}" is not a URL. Use the app's origin, e.g. https://clawdmeter.example.com`);
-    }
-    const local = ["localhost", "127.0.0.1"].includes(parsed.hostname);
-    if (parsed.protocol !== "https:" && !local) fail(`"${trimmed}" must use https.`);
-    if (parsed.origin !== trimmed) fail(`"${trimmed}" should be just the origin: ${parsed.origin}`);
-    return parsed.origin;
-  }).join(",");
+  return value
+    .split(",")
+    .map((raw) => {
+      const trimmed = raw.trim().replace(/\/+$/, "");
+      let parsed;
+      try {
+        parsed = new URL(trimmed);
+      } catch {
+        fail(
+          `"${trimmed}" is not a URL. Use the app's origin, e.g. https://clawdmeter.example.com`,
+        );
+      }
+      const local = ["localhost", "127.0.0.1"].includes(parsed.hostname);
+      if (parsed.protocol !== "https:" && !local) fail(`"${trimmed}" must use https.`);
+      if (parsed.origin !== trimmed)
+        fail(`"${trimmed}" should be just the origin: ${parsed.origin}`);
+      return parsed.origin;
+    })
+    .join(",");
 }
 
 function flag(name) {
@@ -115,7 +140,8 @@ function flag(name) {
 async function configure() {
   requireLogin();
   const listed = wrangler(["secret", "list", "--format", "json"], { quiet: true });
-  if (!listed.ok) fail("Could not read the Worker's secrets. Deploy it first with `npm run deploy`.");
+  if (!listed.ok)
+    fail("Could not read the Worker's secrets. Deploy it first with `npm run deploy`.");
   const existing = new Set(jsonFrom(listed.out).map((secret) => secret.name));
   const secrets = {};
 
@@ -123,16 +149,22 @@ async function configure() {
   if (origin !== undefined) secrets.ALLOWED_ORIGIN = parseOrigins(origin);
 
   const rotateApp = process.argv.includes("--rotate-app-key");
-  if (!existing.has("APP_SHARED_KEY") || rotateApp) secrets.APP_SHARED_KEY = randomBytes(32).toString("hex");
+  if (!existing.has("APP_SHARED_KEY") || rotateApp)
+    secrets.APP_SHARED_KEY = randomBytes(32).toString("hex");
 
   const rotateEncryption = process.argv.includes("--rotate-encryption-key");
   if (rotateEncryption && existing.has("TOKEN_ENCRYPTION_KEY") && !process.argv.includes("--yes")) {
-    fail("Rotating TOKEN_ENCRYPTION_KEY makes every enrolled account unreadable. Add --yes if that is intended.");
+    fail(
+      "Rotating TOKEN_ENCRYPTION_KEY makes every enrolled account unreadable. Add --yes if that is intended.",
+    );
   }
-  if (!existing.has("TOKEN_ENCRYPTION_KEY") || rotateEncryption) secrets.TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("hex");
+  if (!existing.has("TOKEN_ENCRYPTION_KEY") || rotateEncryption)
+    secrets.TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 
   if (!Object.keys(secrets).length) {
-    console.log("Nothing to change: APP_SHARED_KEY and TOKEN_ENCRYPTION_KEY are already set. Pass --origin to set the app origin.");
+    console.log(
+      "Nothing to change: APP_SHARED_KEY and TOKEN_ENCRYPTION_KEY are already set. Pass --origin to set the app origin.",
+    );
     return;
   }
   const result = wrangler(["secret", "bulk"], { input: JSON.stringify(secrets), quiet: true });

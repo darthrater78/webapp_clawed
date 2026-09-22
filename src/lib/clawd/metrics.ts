@@ -158,7 +158,8 @@ export function formatClock(at: number | null, now = Date.now()): string {
   if (at === null || Number.isNaN(at)) return "—";
   const date = new Date(at);
   const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const startOfDay = (value: Date) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
   const days = Math.round((startOfDay(date) - startOfDay(new Date(now))) / 86_400_000);
   if (days === 0) return `today ${time}`;
   if (days === 1) return `tomorrow ${time}`;

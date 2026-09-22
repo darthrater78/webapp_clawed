@@ -77,7 +77,8 @@ export function loadWorkerConfig(userId: string | null): WorkerConfig | null {
       ...(typeof parsed.accountId === "string" ? { accountId: parsed.accountId } : {}),
     };
     // A freshly minted owner key must be kept, or the accounts it enrols become unreachable.
-    if (!parsed.ownerKey) window.localStorage.setItem(key(userId, CONFIG_KEY), JSON.stringify(config));
+    if (!parsed.ownerKey)
+      window.localStorage.setItem(key(userId, CONFIG_KEY), JSON.stringify(config));
     return config;
   } catch {
     return null;
@@ -249,7 +250,9 @@ export async function fetchWorkerReading(
   accountId: string,
   signal?: AbortSignal,
 ) {
-  return workerJson<WorkerReading>(config, `/api/usage/${encodeURIComponent(accountId)}`, { signal });
+  return workerJson<WorkerReading>(config, `/api/usage/${encodeURIComponent(accountId)}`, {
+    signal,
+  });
 }
 
 const isoDay = (time: number) => {
@@ -307,13 +310,19 @@ function historyFromPeaks(peaks: DayPeaks, now: number) {
   });
 }
 
-export function buildWorkerSnapshot(reading: WorkerReading, peaks: DayPeaks, now: number): Snapshot {
+export function buildWorkerSnapshot(
+  reading: WorkerReading,
+  peaks: DayPeaks,
+  now: number,
+): Snapshot {
   const sessionPct = clamp(reading.fiveHour.utilization);
   const weekPct = clamp(reading.sevenDay.utilization);
   const sessionResetAt = reading.fiveHour.resetsAt ? Date.parse(reading.fiveHour.resetsAt) : null;
   const weekResetAt = reading.sevenDay.resetsAt ? Date.parse(reading.sevenDay.resetsAt) : null;
   const resetIn = (at: number | null, span: number) =>
-    at === null || Number.isNaN(at) ? null : Math.max(0, at - now) || Math.max(0, span - (now % span));
+    at === null || Number.isNaN(at)
+      ? null
+      : Math.max(0, at - now) || Math.max(0, span - (now % span));
   const history = historyFromPeaks(peaks, now);
   const worst = Math.max(sessionPct, weekPct);
   const level: Level = worst >= 95 ? "critical" : worst >= 80 ? "warn" : "ok";

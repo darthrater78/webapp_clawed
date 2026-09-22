@@ -41,9 +41,7 @@ export function emit(
   eventName: string,
   additionalDetails?: Record<string, string | number | boolean | null>,
 ) {
-  void safe(() =>
-    trackEvent(additionalDetails ? { eventName, additionalDetails } : { eventName }),
-  );
+  void safe(() => trackEvent(additionalDetails ? { eventName, additionalDetails } : { eventName }));
 }
 
 export function expandToTab() {

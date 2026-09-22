@@ -6,7 +6,13 @@ import { clamp, formatClock, formatDuration } from "@/lib/clawd/metrics";
 import { cn } from "@/lib/utils";
 
 /** Toggles the everything-at-once view. Shown whenever live accounts are connected. */
-export function AccountsCompareToggle({ meter, compact }: { meter: Clawdmeter; compact?: boolean }) {
+export function AccountsCompareToggle({
+  meter,
+  compact,
+}: {
+  meter: Clawdmeter;
+  compact?: boolean;
+}) {
   const { accounts, compare, setCompare } = meter.worker;
   if (meter.source !== "worker" || accounts.length === 0) return null;
 
@@ -18,7 +24,9 @@ export function AccountsCompareToggle({ meter, compact }: { meter: Clawdmeter; c
       onClick={() => setCompare(!compare)}
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border font-semibold transition-colors",
-        compare ? "bg-primary text-primary-foreground" : "bg-surface-2 text-muted-foreground hover:bg-accent",
+        compare
+          ? "bg-primary text-primary-foreground"
+          : "bg-surface-2 text-muted-foreground hover:bg-accent",
         compact ? "px-2 py-1 text-[0.6rem]" : "px-2.5 py-1.5 text-xs",
       )}
     >
@@ -85,7 +93,13 @@ export function AccountsStrip({
                   {account.label}
                 </span>
                 <span className="numerals shrink-0 text-[0.55rem] uppercase tracking-widest text-muted-foreground">
-                  {reading ? (reading.needsReauth ? "re-enrol" : reading.stale ? "stale" : "live") : "…"}
+                  {reading
+                    ? reading.needsReauth
+                      ? "re-enrol"
+                      : reading.stale
+                        ? "stale"
+                        : "live"
+                    : "…"}
                 </span>
               </div>
 

@@ -4,7 +4,12 @@ import { ChevronLeft, Clock, Flame, Maximize2 } from "lucide-react";
 import { AccountsCompareToggle, AccountsStrip } from "@/components/clawd/AccountsStrip";
 import { Bar, Gauge } from "@/components/clawd/Gauge";
 import { Creature } from "@/components/clawd/Creature";
-import { AccountLabel, SourceBadge, WorkerPanel, WorkerSetupButton } from "@/components/clawd/WorkerPanel";
+import {
+  AccountLabel,
+  SourceBadge,
+  WorkerPanel,
+  WorkerSetupButton,
+} from "@/components/clawd/WorkerPanel";
 import { AlertStrip, HistoryChart, LogPad, RunwayVerdict, Stat } from "@/components/clawd/Pieces";
 import type { Clawdmeter } from "@/hooks/useClawdmeter";
 import { expandToTab } from "@/lib/clawd/host";
@@ -49,7 +54,9 @@ export function WidgetLandscape({ meter }: { meter: Clawdmeter }) {
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <Creature mood={snapshot.mood} level={snapshot.level} size={22} />
-          <span className="truncate text-[0.65rem] font-bold uppercase tracking-widest">Clawdmeter</span>
+          <span className="truncate text-[0.65rem] font-bold uppercase tracking-widest">
+            Clawdmeter
+          </span>
           <SourceBadge meter={meter} compact />
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -60,7 +67,9 @@ export function WidgetLandscape({ meter }: { meter: Clawdmeter }) {
               onClick={() => setTab(t.id)}
               className={cn(
                 "rounded-md px-1.5 py-0.5 text-[0.6rem] font-semibold transition-colors",
-                tab === t.id ? "bg-primary text-primary-foreground" : "bg-surface-2 text-muted-foreground",
+                tab === t.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface-2 text-muted-foreground",
               )}
             >
               {t.label}
@@ -87,7 +96,12 @@ export function WidgetLandscape({ meter }: { meter: Clawdmeter }) {
               right={`${snapshot.session.used}/${quotas.session}`}
               compact
             />
-            <Bar pct={snapshot.week.pct} label="Week" right={`${snapshot.week.used}/${quotas.weekly}`} compact />
+            <Bar
+              pct={snapshot.week.pct}
+              label="Week"
+              right={`${snapshot.week.used}/${quotas.weekly}`}
+              compact
+            />
             <div className="numerals flex items-center gap-2 text-[0.6rem] text-muted-foreground">
               <Clock className="size-3 shrink-0" />
               {formatDuration(snapshot.session.resetInMs)}
@@ -115,7 +129,11 @@ export function WidgetLandscape({ meter }: { meter: Clawdmeter }) {
               tone={snapshot.limitBeforeReset ? "crit" : "ok"}
               compact
             />
-            <Stat label="Proj." value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`} compact />
+            <Stat
+              label="Proj."
+              value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`}
+              compact
+            />
           </div>
         </div>
       ) : null}
@@ -148,7 +166,11 @@ export function WidgetPortrait({ meter }: { meter: Clawdmeter }) {
           <>
             <h2 className="text-sm font-bold">{live ? "Observed weekly change" : "Last 7 days"}</h2>
             <HistoryChart snapshot={snapshot} height={140} />
-            <Bar pct={snapshot.week.pct} label="Weekly quota" right={`${snapshot.week.used}/${quotas.weekly}`} />
+            <Bar
+              pct={snapshot.week.pct}
+              label="Weekly quota"
+              right={`${snapshot.week.used}/${quotas.weekly}`}
+            />
             <div className="grid grid-cols-2 gap-1.5">
               <Stat label="Today" value={`${snapshot.totalToday}`} />
               <Stat label="Week resets" value={formatDuration(snapshot.week.resetInMs)} />
@@ -166,9 +188,16 @@ export function WidgetPortrait({ meter }: { meter: Clawdmeter }) {
                 value={live ? "—" : formatMinutes(snapshot.timeToLimitMin)}
                 tone={snapshot.limitBeforeReset ? "crit" : "ok"}
               />
-              <Stat label="Projected at reset" value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`} />
+              <Stat
+                label="Projected at reset"
+                value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`}
+              />
             </div>
-            <Bar pct={snapshot.sonnetPct} label={live ? "Sonnet weekly" : "Sonnet share"} tone="sonnet" />
+            <Bar
+              pct={snapshot.sonnetPct}
+              label={live ? "Sonnet weekly" : "Sonnet share"}
+              tone="sonnet"
+            />
             <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus share"} tone="opus" />
           </>
         )}
@@ -202,64 +231,64 @@ export function WidgetPortrait({ meter }: { meter: Clawdmeter }) {
         </div>
       ) : (
         <>
-      <AlertStrip snapshot={snapshot} compact />
+          <AlertStrip snapshot={snapshot} compact />
 
-      <div className="flex items-start justify-center gap-3 py-1">
-        <Gauge
-          pct={snapshot.session.pct}
-          label="5-hour"
-          size={110}
-          thickness={9}
-          resetIn={formatDuration(snapshot.session.resetInMs)}
-          resetAt={formatClock(snapshot.session.resetAt)}
-        />
-        <Gauge
-          pct={snapshot.week.pct}
-          label="Week"
-          size={110}
-          thickness={9}
-          resetIn={formatDuration(snapshot.week.resetInMs)}
-          resetAt={formatClock(snapshot.week.resetAt)}
-        />
-      </div>
+          <div className="flex items-start justify-center gap-3 py-1">
+            <Gauge
+              pct={snapshot.session.pct}
+              label="5-hour"
+              size={110}
+              thickness={9}
+              resetIn={formatDuration(snapshot.session.resetInMs)}
+              resetAt={formatClock(snapshot.session.resetAt)}
+            />
+            <Gauge
+              pct={snapshot.week.pct}
+              label="Week"
+              size={110}
+              thickness={9}
+              resetIn={formatDuration(snapshot.week.resetInMs)}
+              resetAt={formatClock(snapshot.week.resetAt)}
+            />
+          </div>
 
-      <div className="grid grid-cols-2 gap-1.5">
-        <Stat label="Burn 30m" value={live ? "—" : `${snapshot.burn30.toFixed(1)}%/h`} />
-        <Stat
-          label="To limit"
-          value={live ? "—" : formatMinutes(snapshot.timeToLimitMin)}
-          tone={snapshot.limitBeforeReset ? "crit" : "ok"}
-        />
-      </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <Stat label="Burn 30m" value={live ? "—" : `${snapshot.burn30.toFixed(1)}%/h`} />
+            <Stat
+              label="To limit"
+              value={live ? "—" : formatMinutes(snapshot.timeToLimitMin)}
+              tone={snapshot.limitBeforeReset ? "crit" : "ok"}
+            />
+          </div>
 
-      <HistoryChart snapshot={snapshot} height={110} />
+          <HistoryChart snapshot={snapshot} height={110} />
 
-      <div className="mt-auto space-y-1.5">
-        {live ? null : <LogPad onLog={logUsage} onUndo={undoLast} unit={quotas.unit} compact />}
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={() => setPage("week")}
-            className="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-[0.65rem] font-semibold hover:bg-accent"
-          >
-            Weekly detail
-          </button>
-          <button
-            type="button"
-            onClick={() => setPage("pace")}
-            className="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-[0.65rem] font-semibold hover:bg-accent"
-          >
-            Pace detail
-          </button>
-          <button
-            type="button"
-            onClick={() => setPage("setup")}
-            className="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-[0.65rem] font-semibold hover:bg-accent"
-          >
-             Usage Worker
-          </button>
-        </div>
-      </div>
+          <div className="mt-auto space-y-1.5">
+            {live ? null : <LogPad onLog={logUsage} onUndo={undoLast} unit={quotas.unit} compact />}
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPage("week")}
+                className="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-[0.65rem] font-semibold hover:bg-accent"
+              >
+                Weekly detail
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage("pace")}
+                className="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-[0.65rem] font-semibold hover:bg-accent"
+              >
+                Pace detail
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage("setup")}
+                className="flex-1 rounded-lg bg-surface-2 px-2 py-1.5 text-[0.65rem] font-semibold hover:bg-accent"
+              >
+                Usage Worker
+              </button>
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -312,7 +341,13 @@ export function WidgetExpanded({ meter }: { meter: Clawdmeter }) {
         <AlertStrip snapshot={snapshot} compact />
         <div className="mt-auto">
           {live ? null : (
-            <LogPad onLog={logUsage} onUndo={undoLast} onReset={resetAll} unit={quotas.unit} compact />
+            <LogPad
+              onLog={logUsage}
+              onUndo={undoLast}
+              onReset={resetAll}
+              unit={quotas.unit}
+              compact
+            />
           )}
         </div>
       </aside>
@@ -326,11 +361,19 @@ export function WidgetExpanded({ meter }: { meter: Clawdmeter }) {
             value={live ? "—" : formatMinutes(snapshot.timeToLimitMin)}
             tone={snapshot.limitBeforeReset ? "crit" : "ok"}
           />
-        <Stat label="Projected" value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`} />
+          <Stat label="Projected" value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`} />
         </div>
         <div className="space-y-1.5 rounded-xl bg-surface p-2.5">
-          <Bar pct={snapshot.week.pct} label="Weekly quota" right={`${snapshot.week.used}/${quotas.weekly}`} />
-          <Bar pct={snapshot.sonnetPct} label={live ? "Sonnet weekly" : "Sonnet share"} tone="sonnet" />
+          <Bar
+            pct={snapshot.week.pct}
+            label="Weekly quota"
+            right={`${snapshot.week.used}/${quotas.weekly}`}
+          />
+          <Bar
+            pct={snapshot.sonnetPct}
+            label={live ? "Sonnet weekly" : "Sonnet share"}
+            tone="sonnet"
+          />
           <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus share"} tone="opus" />
           <RunwayVerdict snapshot={snapshot} compact unavailable={live} />
         </div>
@@ -367,12 +410,21 @@ export function WidgetXL({ meter }: { meter: Clawdmeter }) {
           <span className="truncate text-sm font-bold uppercase tracking-[0.2em]">Clawdmeter</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <AccountLabel meter={meter} className="max-w-[10rem] text-[0.65rem] text-muted-foreground" />
+          <AccountLabel
+            meter={meter}
+            className="max-w-[10rem] text-[0.65rem] text-muted-foreground"
+          />
           <SourceBadge meter={meter} compact />
           <AccountsCompareToggle meter={meter} compact />
           <WorkerSetupButton meter={meter} compact />
           {live ? null : (
-            <LogPad onLog={logUsage} onUndo={undoLast} onReset={resetAll} unit={quotas.unit} compact />
+            <LogPad
+              onLog={logUsage}
+              onUndo={undoLast}
+              onReset={resetAll}
+              unit={quotas.unit}
+              compact
+            />
           )}
           <ExpandButton />
         </div>
@@ -383,70 +435,78 @@ export function WidgetXL({ meter }: { meter: Clawdmeter }) {
           <AccountsStrip meter={meter} gaugeSize={104} minCardWidth={240} />
         </div>
       ) : (
-      <div className="grid min-h-0 flex-1 grid-cols-4 gap-2">
-        <div className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-surface p-3">
-          <Gauge
-            pct={snapshot.session.pct}
-            label="5-hour"
-            size={150}
-            sub={`${snapshot.session.used}/${quotas.session}`}
-            resetIn={formatDuration(snapshot.session.resetInMs)}
-            resetAt={formatClock(snapshot.session.resetAt)}
-          />
-          <AlertStrip snapshot={snapshot} compact />
-        </div>
-        <div className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-surface p-3">
-          <Gauge
-            pct={snapshot.week.pct}
-            label="Week"
-            size={150}
-            sub={`${snapshot.week.used}/${quotas.weekly}`}
-            resetIn={formatDuration(snapshot.week.resetInMs)}
-            resetAt={formatClock(snapshot.week.resetAt)}
-          />
-          <RunwayVerdict snapshot={snapshot} compact unavailable={live} />
-        </div>
-        <div className="flex min-w-0 flex-col gap-2 rounded-xl bg-surface p-3">
-          <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
-            Pace
-          </span>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Stat label="Burn 30m" value={live ? "—" : `${snapshot.burn30.toFixed(1)}%/h`} />
-            <Stat label="Burn 5m" value={live ? "—" : `${snapshot.burn5.toFixed(1)}%/h`} />
-            <Stat
-              label="To limit"
-              value={live ? "—" : formatMinutes(snapshot.timeToLimitMin)}
-              tone={snapshot.limitBeforeReset ? "crit" : "ok"}
+        <div className="grid min-h-0 flex-1 grid-cols-4 gap-2">
+          <div className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-surface p-3">
+            <Gauge
+              pct={snapshot.session.pct}
+              label="5-hour"
+              size={150}
+              sub={`${snapshot.session.used}/${quotas.session}`}
+              resetIn={formatDuration(snapshot.session.resetInMs)}
+              resetAt={formatClock(snapshot.session.resetAt)}
             />
-            <Stat label="Projected" value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`} />
+            <AlertStrip snapshot={snapshot} compact />
           </div>
-          <Bar pct={snapshot.sonnetPct} label={live ? "Sonnet weekly" : "Sonnet"} tone="sonnet" compact />
-          <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus"} tone="opus" compact />
-          <div className="mt-auto">
-            <Stat label="Pace ratio" value={live ? "—" : `${snapshot.paceRatio.toFixed(2)}x`} />
+          <div className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-surface p-3">
+            <Gauge
+              pct={snapshot.week.pct}
+              label="Week"
+              size={150}
+              sub={`${snapshot.week.used}/${quotas.weekly}`}
+              resetIn={formatDuration(snapshot.week.resetInMs)}
+              resetAt={formatClock(snapshot.week.resetAt)}
+            />
+            <RunwayVerdict snapshot={snapshot} compact unavailable={live} />
+          </div>
+          <div className="flex min-w-0 flex-col gap-2 rounded-xl bg-surface p-3">
+            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+              Pace
+            </span>
+            <div className="grid grid-cols-2 gap-1.5">
+              <Stat label="Burn 30m" value={live ? "—" : `${snapshot.burn30.toFixed(1)}%/h`} />
+              <Stat label="Burn 5m" value={live ? "—" : `${snapshot.burn5.toFixed(1)}%/h`} />
+              <Stat
+                label="To limit"
+                value={live ? "—" : formatMinutes(snapshot.timeToLimitMin)}
+                tone={snapshot.limitBeforeReset ? "crit" : "ok"}
+              />
+              <Stat
+                label="Projected"
+                value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`}
+              />
+            </div>
+            <Bar
+              pct={snapshot.sonnetPct}
+              label={live ? "Sonnet weekly" : "Sonnet"}
+              tone="sonnet"
+              compact
+            />
+            <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus"} tone="opus" compact />
+            <div className="mt-auto">
+              <Stat label="Pace ratio" value={live ? "—" : `${snapshot.paceRatio.toFixed(2)}x`} />
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col gap-2 rounded-xl bg-surface p-3">
+            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+              {live ? "Observed weekly change" : "Last 7 days"}
+            </span>
+            <HistoryChart snapshot={snapshot} height={120} />
+            <div className="mt-auto space-y-1.5">
+              <Stat label="Today" value={`${snapshot.totalToday} ${quotas.unit}`} />
+              {live ? null : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setQuotas({ ...meter.localQuotas, session: meter.localQuotas.session + 5 })
+                  }
+                  className="w-full rounded-lg bg-surface-2 px-2 py-1 text-[0.6rem] font-semibold text-muted-foreground hover:bg-accent"
+                >
+                  Session limit +5
+                </button>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex min-w-0 flex-col gap-2 rounded-xl bg-surface p-3">
-          <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
-            {live ? "Observed weekly change" : "Last 7 days"}
-          </span>
-          <HistoryChart snapshot={snapshot} height={120} />
-          <div className="mt-auto space-y-1.5">
-            <Stat label="Today" value={`${snapshot.totalToday} ${quotas.unit}`} />
-            {live ? null : (
-              <button
-                type="button"
-                onClick={() =>
-                  setQuotas({ ...meter.localQuotas, session: meter.localQuotas.session + 5 })
-                }
-                className="w-full rounded-lg bg-surface-2 px-2 py-1 text-[0.6rem] font-semibold text-muted-foreground hover:bg-accent"
-              >
-                Session limit +5
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
       )}
     </div>
   );

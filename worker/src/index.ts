@@ -12,7 +12,12 @@ export type Env = {
 type Account = { id: string; label: string };
 type AccountIndex = { accounts: Account[] };
 /** `revoked` is set when Claude rejects the refresh token, so it is never retried. */
-type TokenRecord = { accessToken: string; refreshToken: string; expiresAt: number; revoked?: boolean };
+type TokenRecord = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  revoked?: boolean;
+};
 type UsageWindow = { utilization: number; resets_at?: string | null } | null;
 type AnthropicUsage = {
   five_hour?: UsageWindow;
@@ -71,7 +76,10 @@ function corsHeaders(env: Env, request: Request): Record<string, string> {
 }
 
 function json(env: Env, request: Request, body: unknown, status = 200) {
-  return Response.json(body, { status, headers: { ...corsHeaders(env, request), "Cache-Control": "no-store" } });
+  return Response.json(body, {
+    status,
+    headers: { ...corsHeaders(env, request), "Cache-Control": "no-store" },
+  });
 }
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -90,7 +98,13 @@ function hex(bytes: Uint8Array) {
 }
 
 async function hmac(value: string, secret: string) {
-  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
   return new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(value)));
 }
 
@@ -100,7 +114,8 @@ async function authorized(request: Request, appKey: string) {
   if (!presented) return false;
   const [left, right] = await Promise.all([hmac(presented, appKey), hmac(appKey, appKey)]);
   let difference = 0;
-  for (let index = 0; index < right.length; index += 1) difference |= (left[index] ?? 0) ^ (right[index] ?? 0);
+  for (let index = 0; index < right.length; index += 1)
+    difference |= (left[index] ?? 0) ^ (right[index] ?? 0);
   return difference === 0;
 }
 
@@ -121,14 +136,22 @@ async function encryptionKey(secret: string) {
 
 async function encryptTokens(tokens: TokenRecord, secret: string) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await encryptionKey(secret), encoder.encode(JSON.stringify(tokens)));
+  const cipher = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    await encryptionKey(secret),
+    encoder.encode(JSON.stringify(tokens)),
+  );
   return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipher))}`;
 }
 
 async function decryptTokens(value: string, secret: string): Promise<TokenRecord> {
   const [ivValue, cipherValue] = value.split(".");
   if (!ivValue || !cipherValue) throw new Error("Invalid encrypted token record");
-  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64ToBytes(ivValue) }, await encryptionKey(secret), base64ToBytes(cipherValue));
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64ToBytes(ivValue) },
+    await encryptionKey(secret),
+    base64ToBytes(cipherValue),
+  );
   return JSON.parse(decoder.decode(plaintext)) as TokenRecord;
 }
 
@@ -142,42 +165,68 @@ async function postToken(env: Env, body: Record<string, string>) {
 
 /** Exchanges the refresh token. Claude rotates it, so the caller must persist the result. */
 async function refreshTokens(tokens: TokenRecord, env: Env): Promise<TokenRecord> {
-  const response = await postToken(env, { grant_type: "refresh_token", refresh_token: tokens.refreshToken });
+  const response = await postToken(env, {
+    grant_type: "refresh_token",
+    refresh_token: tokens.refreshToken,
+  });
   if (!response.ok) {
     const detail = (await response.json().catch(() => null)) as { error?: unknown } | null;
     // invalid_grant: the refresh token was revoked or already used. Retrying cannot help.
     if (response.status === 400 && detail?.error === "invalid_grant") {
-      throw new ReauthRequired("Claude no longer accepts this account's saved sign-in. Remove it and enrol it again.");
+      throw new ReauthRequired(
+        "Claude no longer accepts this account's saved sign-in. Remove it and enrol it again.",
+      );
     }
     throw new Error(`Claude token refresh failed (${response.status})`);
   }
-  const body = (await response.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
+  const body = (await response.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
   if (!body.access_token) throw new Error("Claude token refresh returned no access token");
-  return { accessToken: body.access_token, refreshToken: body.refresh_token ?? tokens.refreshToken, expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000 };
+  return {
+    accessToken: body.access_token,
+    refreshToken: body.refresh_token ?? tokens.refreshToken,
+    expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000,
+  };
 }
 
 /**
  * Loads, refreshes when due, and persists one account's tokens. A rejected refresh
  * token is recorded so neither requests nor the cron keep hammering the endpoint.
  */
-async function currentTokens(env: Env, secret: string, tokenKey: string, refreshBefore: number): Promise<TokenRecord> {
+async function currentTokens(
+  env: Env,
+  secret: string,
+  tokenKey: string,
+  refreshBefore: number,
+): Promise<TokenRecord> {
   const encrypted = await env.USAGE_KV.get(tokenKey);
-  if (!encrypted) throw new ReauthRequired("This account's Claude credentials are missing. Enrol it again.");
+  if (!encrypted)
+    throw new ReauthRequired("This account's Claude credentials are missing. Enrol it again.");
   const tokens = await decryptTokens(encrypted, secret);
-  if (tokens.revoked) throw new ReauthRequired("Claude no longer accepts this account's saved sign-in. Remove it and enrol it again.");
+  if (tokens.revoked)
+    throw new ReauthRequired(
+      "Claude no longer accepts this account's saved sign-in. Remove it and enrol it again.",
+    );
   if (tokens.expiresAt > Date.now() + refreshBefore) return tokens;
   try {
     const refreshed = await refreshTokens(tokens, env);
     await env.USAGE_KV.put(tokenKey, await encryptTokens(refreshed, secret));
     return refreshed;
   } catch (error) {
-    if (error instanceof ReauthRequired) await env.USAGE_KV.put(tokenKey, await encryptTokens({ ...tokens, revoked: true }, secret));
+    if (error instanceof ReauthRequired)
+      await env.USAGE_KV.put(tokenKey, await encryptTokens({ ...tokens, revoked: true }, secret));
     throw error;
   }
 }
 
 function normalizedWindow(window: UsageWindow) {
-  return { utilization: typeof window?.utilization === "number" ? window.utilization : 0, resetsAt: typeof window?.resets_at === "string" ? window.resets_at : null };
+  return {
+    utilization: typeof window?.utilization === "number" ? window.utilization : 0,
+    resetsAt: typeof window?.resets_at === "string" ? window.resets_at : null,
+  };
 }
 
 function normalizeUsage(accountId: string, label: string, usage: AnthropicUsage): CachedUsage {
@@ -194,7 +243,9 @@ function normalizeUsage(accountId: string, label: string, usage: AnthropicUsage)
 }
 
 async function readAccounts(env: Env, ownerId: string) {
-  return (await env.USAGE_KV.get<AccountIndex>(`owner:${ownerId}:accounts`, "json"))?.accounts ?? [];
+  return (
+    (await env.USAGE_KV.get<AccountIndex>(`owner:${ownerId}:accounts`, "json"))?.accounts ?? []
+  );
 }
 
 async function writeAccounts(env: Env, ownerId: string, accounts: Account[]) {
@@ -205,21 +256,40 @@ async function fetchUsage(env: Env, secret: string, ownerId: string, account: Ac
   // Normally the cron has already refreshed; this only refreshes a token that has actually expired.
   const tokens = await currentTokens(env, secret, `tokens:${ownerId}:${account.id}`, 60_000);
   const response = await fetch("https://api.anthropic.com/api/oauth/usage", {
-    headers: { Authorization: `Bearer ${tokens.accessToken}`, "anthropic-beta": "oauth-2025-04-20", "anthropic-version": "2023-06-01", "User-Agent": "clawdmeter-worker/1.1", "x-app": "cli" },
+    headers: {
+      Authorization: `Bearer ${tokens.accessToken}`,
+      "anthropic-beta": "oauth-2025-04-20",
+      "anthropic-version": "2023-06-01",
+      "User-Agent": "clawdmeter-worker/1.1",
+      "x-app": "cli",
+    },
   });
   if (!response.ok) throw new Error(`Claude usage request failed (${response.status})`);
   return normalizeUsage(account.id, account.label, (await response.json()) as AnthropicUsage);
 }
 
-async function usageFor(env: Env, secret: string, ownerId: string, account: Account): Promise<CachedUsage> {
+async function usageFor(
+  env: Env,
+  secret: string,
+  ownerId: string,
+  account: Account,
+): Promise<CachedUsage> {
   const usageKey = `usage:${ownerId}:${account.id}`;
   const cooldownKey = `cooldown:${ownerId}:${account.id}`;
   const cached = await env.USAGE_KV.get<CachedUsage>(usageKey, "json");
   const cachedAt = cached ? Date.parse(cached.fetchedAt) : 0;
-  if (cached && Date.now() - cachedAt < CACHE_SECONDS * 1000) return { ...cached, label: account.label };
+  if (cached && Date.now() - cachedAt < CACHE_SECONDS * 1000)
+    return { ...cached, label: account.label };
   const cooldown = await env.USAGE_KV.get<Cooldown>(cooldownKey, "json");
   if (cooldown && cooldown.until > Date.now()) {
-    if (cached) return { ...cached, label: account.label, stale: true, error: cooldown.error, needsReauth: cooldown.needsReauth };
+    if (cached)
+      return {
+        ...cached,
+        label: account.label,
+        stale: true,
+        error: cooldown.error,
+        needsReauth: cooldown.needsReauth,
+      };
     throw cooldown.needsReauth ? new ReauthRequired(cooldown.error) : new Error(cooldown.error);
   }
   try {
@@ -231,9 +301,16 @@ async function usageFor(env: Env, secret: string, ownerId: string, account: Acco
     const message = error instanceof Error ? error.message : "Usage unavailable";
     const needsReauth = error instanceof ReauthRequired;
     console.warn(`usage ${account.id}: ${message}`);
-    const record: Cooldown = { until: Date.now() + COOLDOWN_SECONDS * 1000, error: message, needsReauth };
-    await env.USAGE_KV.put(cooldownKey, JSON.stringify(record), { expirationTtl: COOLDOWN_SECONDS });
-    if (cached) return { ...cached, label: account.label, stale: true, error: message, needsReauth };
+    const record: Cooldown = {
+      until: Date.now() + COOLDOWN_SECONDS * 1000,
+      error: message,
+      needsReauth,
+    };
+    await env.USAGE_KV.put(cooldownKey, JSON.stringify(record), {
+      expirationTtl: COOLDOWN_SECONDS,
+    });
+    if (cached)
+      return { ...cached, label: account.label, stale: true, error: message, needsReauth };
     throw error;
   }
 }
@@ -242,7 +319,14 @@ function labelFrom(value: unknown) {
   return typeof value === "string" ? value.trim().slice(0, 60) : "";
 }
 
-async function storeAccount(env: Env, secret: string, ownerId: string, accounts: Account[], label: string, tokens: TokenRecord) {
+async function storeAccount(
+  env: Env,
+  secret: string,
+  ownerId: string,
+  accounts: Account[],
+  label: string,
+  tokens: TokenRecord,
+) {
   const id = hex(crypto.getRandomValues(new Uint8Array(8)));
   await env.USAGE_KV.put(`tokens:${ownerId}:${id}`, await encryptTokens(tokens, secret));
   await writeAccounts(env, ownerId, [...accounts, { id, label }]);
@@ -259,11 +343,20 @@ async function enrolWithCode(request: Request, env: Env, secret: string, ownerId
   }
   const label = labelFrom(body.label);
   if (!label) return { error: "A name for this account is required", status: 400 as const };
-  if (typeof body.code !== "string" || typeof body.verifier !== "string" || !body.code || !body.verifier) {
+  if (
+    typeof body.code !== "string" ||
+    typeof body.verifier !== "string" ||
+    !body.code ||
+    !body.verifier
+  ) {
     return { error: "The authorization code is incomplete", status: 400 as const };
   }
   const accounts = await readAccounts(env, ownerId);
-  if (accounts.length >= 10) return { error: "This browser already has the maximum of 10 enrolled accounts", status: 400 as const };
+  if (accounts.length >= 10)
+    return {
+      error: "This browser already has the maximum of 10 enrolled accounts",
+      status: 400 as const,
+    };
 
   // The client ID and redirect URI are fixed here, never taken from the request.
   const response = await postToken(env, {
@@ -274,9 +367,16 @@ async function enrolWithCode(request: Request, env: Env, secret: string, ownerId
     redirect_uri: REDIRECT_URI,
   });
   if (!response.ok) {
-    return { error: `Claude rejected that authorization code (${response.status}). Start the sign-in again.`, status: 400 as const };
+    return {
+      error: `Claude rejected that authorization code (${response.status}). Start the sign-in again.`,
+      status: 400 as const,
+    };
   }
-  const tokens = (await response.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
+  const tokens = (await response.json()) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
   if (!tokens.access_token || !tokens.refresh_token) {
     return { error: "Claude did not return usable tokens", status: 502 as const };
   }
@@ -302,18 +402,28 @@ async function handle(request: Request, env: Env): Promise<Response> {
 
   // Lets whoever deploys confirm the Worker is up and which settings remain.
   if (url.pathname === "/api/health" && request.method === "GET") {
-    return Response.json({ ok: missing.length === 0, missing }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json(
+      { ok: missing.length === 0, missing },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   }
 
   const origin = request.headers.get("Origin");
   if (origin && allowedOrigins(env).length && !allowedOrigins(env).includes(origin)) {
     return json(env, request, { error: "Origin not allowed" }, 403);
   }
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(env, request) });
+  if (request.method === "OPTIONS")
+    return new Response(null, { status: 204, headers: corsHeaders(env, request) });
   if (!env.APP_SHARED_KEY || !env.TOKEN_ENCRYPTION_KEY || !allowedOrigins(env).length) {
-    return json(env, request, { error: `The usage Worker is not configured yet (missing ${missing.join(", ")}).` }, 503);
+    return json(
+      env,
+      request,
+      { error: `The usage Worker is not configured yet (missing ${missing.join(", ")}).` },
+      503,
+    );
   }
-  if (!(await authorized(request, env.APP_SHARED_KEY))) return json(env, request, { error: "Unauthorized" }, 401);
+  if (!(await authorized(request, env.APP_SHARED_KEY)))
+    return json(env, request, { error: "Unauthorized" }, 401);
 
   const secret = env.TOKEN_ENCRYPTION_KEY;
   const ownerId = await ownerIdFor(request, secret);
@@ -327,7 +437,9 @@ async function handle(request: Request, env: Env): Promise<Response> {
 
   if (url.pathname === "/api/accounts/oauth" && request.method === "POST") {
     const result = await enrolWithCode(request, env, secret, ownerId);
-    return "error" in result ? json(env, request, { error: result.error }, result.status) : json(env, request, result, 201);
+    return "error" in result
+      ? json(env, request, { error: result.error }, result.status)
+      : json(env, request, result, 201);
   }
 
   const accountMatch = url.pathname.match(/^\/api\/accounts\/([^/]+)$/);
@@ -338,7 +450,11 @@ async function handle(request: Request, env: Env): Promise<Response> {
       return json(env, request, { error: "Account not found" }, 404);
     }
     await Promise.all([
-      writeAccounts(env, ownerId, accounts.filter((candidate) => candidate.id !== accountId)),
+      writeAccounts(
+        env,
+        ownerId,
+        accounts.filter((candidate) => candidate.id !== accountId),
+      ),
       env.USAGE_KV.delete(`tokens:${ownerId}:${accountId}`),
       env.USAGE_KV.delete(`usage:${ownerId}:${accountId}`),
       env.USAGE_KV.delete(`cooldown:${ownerId}:${accountId}`),
@@ -349,13 +465,20 @@ async function handle(request: Request, env: Env): Promise<Response> {
   const usageMatch = url.pathname.match(/^\/api\/usage\/([^/]+)$/);
   if (request.method === "GET" && usageMatch?.[1]) {
     const accountId = usageMatch[1];
-    const account = ACCOUNT_ID.test(accountId) ? (await readAccounts(env, ownerId)).find((candidate) => candidate.id === accountId) : undefined;
+    const account = ACCOUNT_ID.test(accountId)
+      ? (await readAccounts(env, ownerId)).find((candidate) => candidate.id === accountId)
+      : undefined;
     if (!account) return json(env, request, { error: "Account not found" }, 404);
     try {
       return json(env, request, await usageFor(env, secret, ownerId, account));
     } catch (error) {
       const needsReauth = error instanceof ReauthRequired;
-      return json(env, request, { error: error instanceof Error ? error.message : "Usage unavailable", needsReauth }, 502);
+      return json(
+        env,
+        request,
+        { error: error instanceof Error ? error.message : "Usage unavailable", needsReauth },
+        502,
+      );
     }
   }
 
@@ -377,7 +500,9 @@ async function refreshAll(env: Env) {
         await currentTokens(env, secret, name, PROACTIVE_REFRESH_MS);
       } catch (error) {
         failed += 1;
-        console.warn(`refresh ${name.split(":").pop()}: ${error instanceof Error ? error.message : "failed"}`);
+        console.warn(
+          `refresh ${name.split(":").pop()}: ${error instanceof Error ? error.message : "failed"}`,
+        );
       }
     }
     cursor = page.list_complete ? undefined : page.cursor;
@@ -394,7 +519,11 @@ export default {
       return json(env, request, { error: "The usage Worker hit an unexpected error." }, 500);
     }
   },
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
     ctx.waitUntil(refreshAll(env));
   },
 };

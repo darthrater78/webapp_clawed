@@ -81,7 +81,9 @@ export function useClawdmeter() {
     async (signal?: AbortSignal) => {
       const config = configRef.current;
       if (!config) return;
-      setWorkerStatus((previous) => (previous.state === "live" ? previous : { state: "connecting" }));
+      setWorkerStatus((previous) =>
+        previous.state === "live" ? previous : { state: "connecting" },
+      );
       try {
         const accounts = await fetchWorkerAccounts(config, signal);
         if (signal?.aborted) return;
@@ -128,7 +130,8 @@ export function useClawdmeter() {
         if (accountId !== config.accountId) applyConfig({ ...config, accountId });
       } catch (err) {
         if (signal?.aborted) return;
-        const message = err instanceof Error ? err.message : "Unknown error talking to the usage Worker.";
+        const message =
+          err instanceof Error ? err.message : "Unknown error talking to the usage Worker.";
         setWorkerReading(null);
         setWorkerStatus({ state: "error", message, at: Date.now() });
       }
@@ -180,7 +183,10 @@ export function useClawdmeter() {
         await pollWorker();
         return { ok: true as const };
       } catch (err) {
-        return { ok: false as const, message: err instanceof Error ? err.message : "The Worker rejected that sign-in." };
+        return {
+          ok: false as const,
+          message: err instanceof Error ? err.message : "The Worker rejected that sign-in.",
+        };
       }
     },
     [applyConfig, pollWorker],

@@ -15,8 +15,7 @@ import { formatClock, formatDuration, formatMinutes } from "@/lib/clawd/metrics"
 
 /** Chrome side panel: 360px wide, tall, vertical scroll only. */
 export function SidePanelLayout({ meter }: { meter: Clawdmeter }) {
-  const { snapshot, quotas, localQuotas, source, logUsage, undoLast, resetAll, setQuotas } =
-    meter;
+  const { snapshot, quotas, localQuotas, source, logUsage, undoLast, resetAll, setQuotas } = meter;
   const live = source === "worker";
 
   return (
@@ -68,8 +67,16 @@ export function SidePanelLayout({ meter }: { meter: Clawdmeter }) {
         </section>
 
         <section className="space-y-2 rounded-xl border border-border bg-card p-3">
-          <Bar pct={snapshot.week.pct} label="Weekly quota" right={`${snapshot.week.used}/${quotas.weekly}`} />
-          <Bar pct={snapshot.sonnetPct} label={live ? "Sonnet weekly" : "Sonnet share"} tone="sonnet" />
+          <Bar
+            pct={snapshot.week.pct}
+            label="Weekly quota"
+            right={`${snapshot.week.used}/${quotas.weekly}`}
+          />
+          <Bar
+            pct={snapshot.sonnetPct}
+            label={live ? "Sonnet weekly" : "Sonnet share"}
+            tone="sonnet"
+          />
           <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus share"} tone="opus" />
         </section>
 
@@ -83,7 +90,10 @@ export function SidePanelLayout({ meter }: { meter: Clawdmeter }) {
               value={live ? "—" : formatMinutes(snapshot.timeToLimitMin)}
               tone={snapshot.limitBeforeReset ? "crit" : "ok"}
             />
-            <Stat label="Projected at reset" value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`} />
+            <Stat
+              label="Projected at reset"
+              value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`}
+            />
           </div>
         </section>
 
@@ -95,7 +105,6 @@ export function SidePanelLayout({ meter }: { meter: Clawdmeter }) {
             <HistoryChart snapshot={snapshot} height={100} />
           </div>
         </section>
-
 
         {live ? null : (
           <section className="rounded-xl border border-border bg-card p-3">

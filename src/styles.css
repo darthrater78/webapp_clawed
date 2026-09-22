@@ -134,7 +134,6 @@
   0%,
   100% {
     transform: translateY(0) rotate(-1deg);
-  
   }
   50% {
     transform: translateY(-6%) rotate(1.5deg);

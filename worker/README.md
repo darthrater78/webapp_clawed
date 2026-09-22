@@ -14,7 +14,7 @@ This folder is its own npm package and deploys separately from the static app. I
 
 You need a Cloudflare account and one of these ways for Wrangler to authenticate:
 
-- **API token (recommended for servers and CI).** In the Cloudflare dashboard go to *My Profile → API Tokens → Create Token → Custom token*, scope it to your one account, and grant only:
+- **API token (recommended for servers and CI).** In the Cloudflare dashboard go to _My Profile → API Tokens → Create Token → Custom token_, scope it to your one account, and grant only:
   - Account · **Workers Scripts** · Edit (deploy, secrets, cron triggers)
   - Account · **Workers KV Storage** · Edit (find or create `USAGE_KV`)
   - Account · **Account Settings** · Read (lets Wrangler resolve the account)
@@ -28,6 +28,7 @@ You need a Cloudflare account and one of these ways for Wrangler to authenticate
   ```
 
   Wrangler picks these up automatically and `npx wrangler login` is not needed. Set a token expiry and rotate the token if the machine is shared.
+
 - **Interactive login:** `npx wrangler login` opens a browser once and stores an OAuth session for your user.
 
 ```sh
@@ -64,11 +65,11 @@ Watch it with `npm run tail`, or in the dashboard under Workers Logs. Each cron 
 
 "Stale" means the Worker is showing its last good reading. Hover the badge to see why:
 
-| Reason | Fix |
-| --- | --- |
-| `Claude token refresh failed (400)` | Worker older than 1.1 refreshed without `client_id`. Redeploy with `npm run deploy`. |
+| Reason                                                  | Fix                                                                                                            |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `Claude token refresh failed (400)`                     | Worker older than 1.1 refreshed without `client_id`. Redeploy with `npm run deploy`.                           |
 | `Claude no longer accepts this account's saved sign-in` | The refresh token was revoked (signed out, or access removed in Claude). Remove the account and sign in again. |
-| `Claude usage request failed (429)` | Claude is rate-limiting. The Worker backs off for five minutes. |
+| `Claude usage request failed (429)`                     | Claude is rate-limiting. The Worker backs off for five minutes.                                                |
 
 ## API
 
@@ -76,12 +77,12 @@ All requests carry `Authorization: Bearer <APP_SHARED_KEY>` and `X-Owner-Key: <p
 
 `GET /api/health` needs no key and returns only `{ ok, missing: [setting names] }`.
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/accounts` | List this browser's enrolled accounts |
-| `POST` | `/api/accounts/oauth` | Enrol by exchanging a sign-in code (`label`, `code`, `state`, `verifier`, `redirectUri`, `clientId`) |
-| `DELETE` | `/api/accounts/:id` | Delete an account and its stored credentials |
-| `GET` | `/api/usage/:id` | Five-hour and weekly usage for one account |
+| Method   | Path                  | Purpose                                                                                              |
+| -------- | --------------------- | ---------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/accounts`       | List this browser's enrolled accounts                                                                |
+| `POST`   | `/api/accounts/oauth` | Enrol by exchanging a sign-in code (`label`, `code`, `state`, `verifier`, `redirectUri`, `clientId`) |
+| `DELETE` | `/api/accounts/:id`   | Delete an account and its stored credentials                                                         |
+| `GET`    | `/api/usage/:id`      | Five-hour and weekly usage for one account                                                           |
 
 ## Security limitations
 
