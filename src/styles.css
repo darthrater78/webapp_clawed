@@ -1,0 +1,260 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Clawdmeter design system — dark terminal / pixel-gauge.
+ * All colors are oklch tokens. Never hardcode colors in components.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-crit: var(--crit);
+  --color-opus: var(--opus);
+  --color-sonnet: var(--sonnet);
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  /* Values mirror the Clawdmeter Lovelace card's own palette. */
+  --radius: 0.75rem;
+  --background: oklch(0.19 0.035 275); /* #0E1322 */
+  --foreground: oklch(0.96 0.005 270); /* #F4F6FB */
+  --card: oklch(0.2 0.035 272); /* #0F1320 */
+  --card-foreground: oklch(0.96 0.005 270);
+  --popover: oklch(0.2 0.035 272);
+  --popover-foreground: oklch(0.96 0.005 270);
+  --primary: oklch(0.68 0.08 34); /* #CE7D6B salmon */
+  --primary-foreground: oklch(0.2 0.03 272);
+  --secondary: oklch(0.31 0.025 272);
+  --secondary-foreground: oklch(0.93 0.01 270);
+  --muted: oklch(0.29 0.025 272); /* #2A3042 */
+  --muted-foreground: oklch(0.77 0.015 270); /* #B9C0D0 */
+  --accent: oklch(0.36 0.09 300); /* violet from the card gradient */
+  --accent-foreground: oklch(0.96 0.005 270);
+  --destructive: oklch(0.59 0.2 26); /* #E53935 */
+  --destructive-foreground: oklch(0.97 0.01 90);
+  --border: oklch(0.29 0.025 272); /* #2A3042 */
+  --input: oklch(0.29 0.025 272);
+  --ring: oklch(0.72 0.1 38); /* #E89079 */
+  --surface: oklch(0.2 0.035 272);
+  --surface-2: oklch(0.26 0.03 272);
+  --ok: oklch(0.6 0.16 145); /* #43A047 */
+  --warn: oklch(0.79 0.16 76); /* #FFB300 */
+  --crit: oklch(0.59 0.2 26); /* #E53935 */
+  --opus: oklch(0.7 0.17 300);
+  --sonnet: oklch(0.72 0.14 215);
+  --gradient-card: linear-gradient(125deg, #0e1322 0%, #1a1031 100%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The widget root IS the card: nothing wraps it. */
+  body:has([data-widget-root]) {
+    background: transparent;
+  }
+}
+
+@utility numerals {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+@utility pixelated {
+  image-rendering: pixelated;
+  shape-rendering: crispEdges;
+}
+
+@utility scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* Creature moods */
+@keyframes clawd-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2%) scale(1.015);
+  }
+}
+
+@keyframes clawd-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  
+  }
+  50% {
+    transform: translateY(-6%) rotate(1.5deg);
+  }
+}
+
+@keyframes clawd-shake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    transform: translate(-2%, -3%) rotate(-2.5deg);
+  }
+  50% {
+    transform: translate(2%, -5%) rotate(2.5deg);
+  }
+  75% {
+    transform: translate(-1%, -2%) rotate(-1.5deg);
+  }
+}
+
+@keyframes clawd-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes clawd-pulse-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 22px 2px var(--pf, transparent);
+  }
+}
+
+@keyframes clawd-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+
+@utility mood-idle {
+  animation: clawd-breathe 4.5s ease-in-out infinite;
+}
+
+@utility mood-calm {
+  animation: clawd-breathe 2.6s ease-in-out infinite;
+}
+
+@utility mood-busy {
+  animation: clawd-bob 1.1s ease-in-out infinite;
+}
+
+@utility mood-heavy {
+  animation: clawd-shake 0.45s ease-in-out infinite;
+}
+
+@utility eye-blink {
+  animation: clawd-blink 6s steps(1, end) infinite;
+  transform-origin: center;
+}
+
+@utility pace-glow {
+  animation: clawd-pulse-ring 1.4s ease-in-out infinite;
+}
+
+@utility pace-glow-fast {
+  animation-duration: 0.7s;
+}
+
+@utility sheen {
+  animation: clawd-sweep 2.8s linear infinite;
+}
+
+/* Decorative backdrop from the Clawdmeter Lovelace card. */
+@utility clawd-bg {
+  position: relative;
+  background: var(--gradient-card);
+}
+
+@utility clawd-bg-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      420px 320px at 86% 55%,
+      color-mix(in oklab, var(--primary) 34%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      360px 300px at 8% 8%,
+      color-mix(in oklab, var(--accent) 30%, transparent),
+      transparent 70%
+    );
+}
+
+/* Keep typed text legible on dark fields, including Chrome autofill. */
+.clawd-field {
+  color: var(--foreground);
+  -webkit-text-fill-color: var(--foreground);
+}
+
+.clawd-field:-webkit-autofill,
+.clawd-field:-webkit-autofill:hover,
+.clawd-field:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  box-shadow: 0 0 0 1000px var(--surface) inset;
+  transition: background-color 9999s ease-out 0s;
+}
