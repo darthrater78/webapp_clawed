@@ -13,9 +13,71 @@ The deployable browser files are written to `dist/`. No app server ships in that
 
 ## Usage Worker
 
-Claude credentials and usage requests run through the separately deployed Cloudflare Worker in [`worker/`](worker/README.md). Each person connects with the Worker URL and shared app key, then adds their own Claude account with **Sign in with Claude** (OAuth). The Worker encrypts the resulting tokens and scopes them to that browser.
+Claude credentials and usage requests go through a Cloudflare Worker in [`worker/`](worker/README.md), deployed separately from the static app. Each person connects with the Worker URL and shared app key, then adds their own Claude account with **Sign in with Claude** (OAuth). The Worker encrypts the resulting tokens and scopes them to that browser.
 
-It is a separate npm package with its own lockfile and is not part of the app's distribution zip. Deploy it from `worker/` with `npm ci && npm run deploy`, then set the app origin and keys whenever they are known with `npm run configure`. See the Worker README for enrolment, token refresh, troubleshooting, and security limitations.
+## Deploy the usage Worker
+
+The Worker is its own npm package and is **not** in the app's source zip. Get it from a clone of this repo, or from the **Source code (zip)** that GitHub attaches to every release.
+
+### What you need
+
+- Node.js 22 or newer
+- A Cloudflare account (the free plan is enough)
+- A way for Wrangler to sign in to Cloudflare, either of:
+  - **API token** (for servers). Create one under _Cloudflare dashboard → My Profile → API Tokens → Create Token → Custom token_, limited to your account, with only these permissions:
+    - Account · Workers Scripts · Edit
+    - Account · Workers KV Storage · Edit
+    - Account · Account Settings · Read
+    - User · User Details · Read
+
+    Then export it:
+
+    ```sh
+    export CLOUDFLARE_API_TOKEN=…     # keep it out of the repo and shell history
+    export CLOUDFLARE_ACCOUNT_ID=…    # optional
+    ```
+
+  - **Browser login:** `npx wrangler login`
+
+### 1. Deploy
+
+```sh
+cd worker
+npm ci
+npm run deploy
+```
+
+This finds or creates the `USAGE_KV` storage, deploys the Worker with its 30-minute token-refresh schedule, and prints the Worker URL (`https://clawdmeter-usage.<your-subdomain>.workers.dev`) along with any settings still missing. Until those are set, the Worker answers every app request with `503 not configured`.
+
+### 2. Configure (now or later)
+
+Run these from `worker/` whenever the values are known, in any order. There is no need to redeploy.
+
+```sh
+npm run configure                                         # creates the app key and encryption key if missing
+npm run configure -- --origin https://<your-app-origin>   # the static app's address; comma-separate several
+```
+
+- **Save the app key when it is printed.** It is shown only once, and every Clawdmeter user needs it.
+- Keys that already exist are never overwritten, so rerunning is safe. See the [Worker README](worker/README.md#configure-any-time-after-deploy) for rotation.
+
+### 3. Check it
+
+```sh
+npm run status -- https://clawdmeter-usage.<your-subdomain>.workers.dev
+```
+
+It prints `✔ Worker is fully configured`, or lists what is still missing.
+
+### 4. Connect the app
+
+In Clawdmeter, open setup (the sliders icon), enter the Worker URL and app key, press **Connect**, then **Open Claude sign-in** to add your Claude account. The app key is held in memory only, so after a page reload the badge shows **Locked** until you enter it again.
+
+### Updating an existing Worker
+
+From `worker/` in the new version, run `npm ci && npm run deploy`. Storage, keys, enrolled accounts, and an origin set in the Cloudflare dashboard are all kept. Watch the logs with `npm run tail`.
+
+Troubleshooting, the API, and security notes are in the [Worker README](worker/README.md).
 
 ## Development checks
 
