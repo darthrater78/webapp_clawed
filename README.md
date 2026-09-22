@@ -75,7 +75,7 @@ In Clawdmeter, open setup (the sliders icon), enter the Worker URL and app key, 
 
 ### Updating an existing Worker
 
-From `worker/` in the new version, run `npm ci && npm run deploy`. Storage, keys, enrolled accounts, and an origin set in the Cloudflare dashboard are all kept. Watch the logs with `npm run tail`.
+From `worker/` in the new version, run `npm ci && npm run deploy`. Storage, keys, enrolled accounts, and an origin set in the Cloudflare dashboard are all kept. Before updating, read [Updating an existing Worker](worker/README.md#updating-an-existing-worker). It covers checking the Worker name, what changes when updating from a Worker older than v0.1.0, and why a rollback is only safe before the first token refresh.
 
 Troubleshooting, the API, and security notes are in the [Worker README](worker/README.md).
 

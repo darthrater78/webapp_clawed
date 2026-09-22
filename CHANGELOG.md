@@ -28,6 +28,8 @@ First versioned release.
 - The Worker is now its own npm package in `worker/` with `deploy`, `configure`,
   and `status` commands. The app origin and keys can be set after deploy, and
   `/api/health` reports which are missing.
+- Instructions for updating an existing Worker, including what to expect when
+  coming from a Worker older than v0.1.0, and rollback limits.
 - CI build check, tag-driven release workflow with source and dist zips, workflow
   linting, and Dependabot.
 
