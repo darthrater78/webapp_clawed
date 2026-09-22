@@ -2,6 +2,10 @@ import { clamp, type Level, type Mood, type Snapshot, SESSION_MS, WEEK_MS } from
 
 export type WorkerConfig = {
   baseUrl: string;
+  /**
+   * Held in memory only, never written to browser storage, so a script running on
+   * this origin later cannot lift it. Empty until entered in this session.
+   */
   appKey: string;
   /** Random per-browser key. Only this browser can read the accounts it enrolled. */
   ownerKey: string;
@@ -9,12 +13,6 @@ export type WorkerConfig = {
 };
 
 export type WorkerAccount = { id: string; label: string };
-
-export type ClaudeCredentials = {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-};
 
 export type UsageWindow = {
   utilization: number;
@@ -26,6 +24,10 @@ export type WorkerReading = {
   label: string;
   fetchedAt: string;
   stale: boolean;
+  /** Why the Worker could not refresh this reading, when it is stale. */
+  error?: string;
+  /** The stored sign-in is dead; the account must be removed and enrolled again. */
+  needsReauth?: boolean;
   fiveHour: UsageWindow;
   sevenDay: UsageWindow;
   sevenDaySonnet: UsageWindow | null;
@@ -34,9 +36,11 @@ export type WorkerReading = {
 
 export type WorkerStatus =
   | { state: "off" }
+  /** Worker known, but the app key has not been entered since this page loaded. */
+  | { state: "locked" }
   | { state: "connecting" }
   | { state: "empty" }
-  | { state: "live"; at: number; stale: boolean }
+  | { state: "live"; at: number; stale: boolean; reason?: string; needsReauth?: boolean }
   | { state: "error"; message: string; at: number };
 
 export type DayPeaks = Record<string, number>;
@@ -45,10 +49,18 @@ const CONFIG_KEY = "clawdmeter.worker.v1";
 const HISTORY_KEY = "clawdmeter.worker.history.v1";
 const key = (userId: string | null, base: string) => (userId ? `${base}.${userId}` : base);
 
+/** The app key travels with every request, so only https (or a local dev Worker) is accepted. */
 export function normalizeWorkerUrl(input: string): string {
   const trimmed = input.trim().replace(/\/+$/, "");
   if (!trimmed) return "";
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    if (url.protocol !== "https:" && !(local && url.protocol === "http:")) return "";
+    return url.origin;
+  } catch {
+    return "";
+  }
 }
 
 /** Minted once per browser and never sent anywhere except this Worker. */
@@ -63,13 +75,18 @@ export function loadWorkerConfig(userId: string | null): WorkerConfig | null {
     const raw = window.localStorage.getItem(key(userId, CONFIG_KEY));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<WorkerConfig>;
-    if (!parsed.baseUrl || !parsed.appKey) return null;
-    return {
+    if (!parsed.baseUrl) return null;
+    const config: WorkerConfig = {
       baseUrl: parsed.baseUrl,
-      appKey: parsed.appKey,
+      // Older versions saved the app key; use it for this session only.
+      appKey: typeof parsed.appKey === "string" ? parsed.appKey : "",
       ownerKey: parsed.ownerKey || createOwnerKey(),
       ...(typeof parsed.accountId === "string" ? { accountId: parsed.accountId } : {}),
     };
+    // Keep a freshly minted owner key (or its accounts become unreachable), and
+    // scrub an app key left behind by an older version.
+    if (!parsed.ownerKey || parsed.appKey !== undefined) saveWorkerConfig(userId, config);
+    return config;
   } catch {
     return null;
   }
@@ -79,8 +96,10 @@ export function saveWorkerConfig(userId: string | null, config: WorkerConfig | n
   if (typeof window === "undefined") return;
   try {
     const storageKey = key(userId, CONFIG_KEY);
-    if (config) window.localStorage.setItem(storageKey, JSON.stringify(config));
-    else window.localStorage.removeItem(storageKey);
+    if (config) {
+      const { appKey: _memoryOnly, ...persisted } = config;
+      window.localStorage.setItem(storageKey, JSON.stringify(persisted));
+    } else window.localStorage.removeItem(storageKey);
   } catch {
     // The live session still works when browser storage is blocked.
   }
@@ -129,55 +148,10 @@ export async function fetchWorkerAccounts(config: WorkerConfig, signal?: AbortSi
   return Array.isArray(data.accounts) ? data.accounts : [];
 }
 
-export async function enrollWorkerAccount(
-  config: WorkerConfig,
-  account: { label: string } & ClaudeCredentials,
-) {
-  const data = await workerJson<{ account: WorkerAccount }>(config, "/api/accounts", {
-    method: "POST",
-    body: account,
-  });
-  return data.account;
-}
-
 export async function removeWorkerAccount(config: WorkerConfig, accountId: string) {
   await workerJson<{ ok: boolean }>(config, `/api/accounts/${encodeURIComponent(accountId)}`, {
     method: "DELETE",
   });
-}
-
-/**
- * Accepts the Claude Code credentials file, its inner object, or a plain
- * {accessToken, refreshToken, expiresAt} shape pasted by hand.
- */
-export function parseClaudeCredentials(input: string): ClaudeCredentials | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(input.trim());
-  } catch {
-    return null;
-  }
-  const candidates: unknown[] = [parsed];
-  if (parsed && typeof parsed === "object") {
-    for (const value of Object.values(parsed as Record<string, unknown>)) {
-      if (value && typeof value === "object") candidates.push(value);
-    }
-  }
-  for (const candidate of candidates) {
-    if (!candidate || typeof candidate !== "object") continue;
-    const record = candidate as Record<string, unknown>;
-    const accessToken = record["accessToken"] ?? record["access_token"];
-    const refreshToken = record["refreshToken"] ?? record["refresh_token"];
-    const expires = record["expiresAt"] ?? record["expires_at"];
-    if (typeof accessToken === "string" && accessToken && typeof refreshToken === "string" && refreshToken) {
-      return {
-        accessToken,
-        refreshToken,
-        expiresAt: typeof expires === "number" ? expires : Number(expires) || 0,
-      };
-    }
-  }
-  return null;
 }
 
 /* ------------------------------------------------- sign in with Claude (PKCE) */
@@ -275,7 +249,7 @@ export async function enrollWorkerAccountWithCode(
 ) {
   const data = await workerJson<{ account: WorkerAccount }>(config, "/api/accounts/oauth", {
     method: "POST",
-    body: { ...account, redirectUri: CLAUDE_REDIRECT_URI, clientId: CLAUDE_CLIENT_ID },
+    body: account,
   });
   return data.account;
 }
@@ -285,7 +259,9 @@ export async function fetchWorkerReading(
   accountId: string,
   signal?: AbortSignal,
 ) {
-  return workerJson<WorkerReading>(config, `/api/usage/${encodeURIComponent(accountId)}`, { signal });
+  return workerJson<WorkerReading>(config, `/api/usage/${encodeURIComponent(accountId)}`, {
+    signal,
+  });
 }
 
 const isoDay = (time: number) => {
@@ -343,13 +319,19 @@ function historyFromPeaks(peaks: DayPeaks, now: number) {
   });
 }
 
-export function buildWorkerSnapshot(reading: WorkerReading, peaks: DayPeaks, now: number): Snapshot {
+export function buildWorkerSnapshot(
+  reading: WorkerReading,
+  peaks: DayPeaks,
+  now: number,
+): Snapshot {
   const sessionPct = clamp(reading.fiveHour.utilization);
   const weekPct = clamp(reading.sevenDay.utilization);
   const sessionResetAt = reading.fiveHour.resetsAt ? Date.parse(reading.fiveHour.resetsAt) : null;
   const weekResetAt = reading.sevenDay.resetsAt ? Date.parse(reading.sevenDay.resetsAt) : null;
   const resetIn = (at: number | null, span: number) =>
-    at === null || Number.isNaN(at) ? null : Math.max(0, at - now) || Math.max(0, span - (now % span));
+    at === null || Number.isNaN(at)
+      ? null
+      : Math.max(0, at - now) || Math.max(0, span - (now % span));
   const history = historyFromPeaks(peaks, now);
   const worst = Math.max(sessionPct, weekPct);
   const level: Level = worst >= 95 ? "critical" : worst >= 80 ? "warn" : "ok";

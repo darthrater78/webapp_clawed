@@ -3,10 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { emit, loadHostIdentity, type HostIdentity } from "@/lib/clawd/host";
 import {
   buildWorkerSnapshot,
-  type ClaudeCredentials,
   createOwnerKey,
   type DayPeaks,
-  enrollWorkerAccount,
   enrollWorkerAccountWithCode,
   fetchWorkerAccounts,
   fetchWorkerReading,
@@ -83,7 +81,10 @@ export function useClawdmeter() {
     async (signal?: AbortSignal) => {
       const config = configRef.current;
       if (!config) return;
-      setWorkerStatus((previous) => (previous.state === "live" ? previous : { state: "connecting" }));
+      if (!config.appKey) return setWorkerStatus({ state: "locked" });
+      setWorkerStatus((previous) =>
+        previous.state === "live" ? previous : { state: "connecting" },
+      );
       try {
         const accounts = await fetchWorkerAccounts(config, signal);
         if (signal?.aborted) return;
@@ -120,11 +121,18 @@ export function useClawdmeter() {
           const peaks = recordWorkerPeak(userId, entry.accountId, entry.sevenDay.utilization, at);
           if (entry.accountId === reading.accountId) setWorkerPeaks(peaks);
         }
-        setWorkerStatus({ state: "live", at, stale: reading.stale });
+        setWorkerStatus({
+          state: "live",
+          at,
+          stale: reading.stale,
+          ...(reading.stale && reading.error ? { reason: reading.error } : {}),
+          ...(reading.needsReauth ? { needsReauth: true } : {}),
+        });
         if (accountId !== config.accountId) applyConfig({ ...config, accountId });
       } catch (err) {
         if (signal?.aborted) return;
-        const message = err instanceof Error ? err.message : "Unknown error talking to the usage Worker.";
+        const message =
+          err instanceof Error ? err.message : "Unknown error talking to the usage Worker.";
         setWorkerReading(null);
         setWorkerStatus({ state: "error", message, at: Date.now() });
       }
@@ -138,6 +146,10 @@ export function useClawdmeter() {
       setWorkerReading(null);
       setWorkerReadings({});
       setWorkerAccounts([]);
+      return;
+    }
+    if (!workerConfig.appKey) {
+      setWorkerStatus({ state: "locked" });
       return;
     }
     const controller = new AbortController();
@@ -157,30 +169,21 @@ export function useClawdmeter() {
     [applyConfig],
   );
 
+  /** Re-enter the app key after a reload; it is never read back from storage. */
+  const unlockWorker = useCallback(
+    (appKey: string) => {
+      const config = configRef.current;
+      if (config) applyConfig({ ...config, appKey });
+    },
+    [applyConfig],
+  );
+
   const disconnectWorker = useCallback(() => {
     applyConfig(null);
     emit("worker_disconnected");
   }, [applyConfig]);
 
   const refreshWorker = useCallback(() => void pollWorker(), [pollWorker]);
-
-  /** Send one Claude account's credentials to the Worker for this browser only. */
-  const enrollWorker = useCallback(
-    async (account: { label: string } & ClaudeCredentials) => {
-      const config = configRef.current;
-      if (!config) return { ok: false as const, message: "Connect to the Worker first." };
-      try {
-        const created = await enrollWorkerAccount(config, account);
-        applyConfig({ ...config, accountId: created.id });
-        emit("worker_account_enrolled");
-        await pollWorker();
-        return { ok: true as const };
-      } catch (err) {
-        return { ok: false as const, message: err instanceof Error ? err.message : "The Worker rejected that account." };
-      }
-    },
-    [applyConfig, pollWorker],
-  );
 
   /** Finish "Sign in with Claude": hand the one-time code to the Worker. */
   const enrollWorkerWithCode = useCallback(
@@ -194,7 +197,10 @@ export function useClawdmeter() {
         await pollWorker();
         return { ok: true as const };
       } catch (err) {
-        return { ok: false as const, message: err instanceof Error ? err.message : "The Worker rejected that sign-in." };
+        return {
+          ok: false as const,
+          message: err instanceof Error ? err.message : "The Worker rejected that sign-in.",
+        };
       }
     },
     [applyConfig, pollWorker],
@@ -308,10 +314,10 @@ export function useClawdmeter() {
       compare: compareAccounts,
       setCompare: setCompareAccounts,
       connect: connectWorker,
+      unlock: unlockWorker,
       disconnect: disconnectWorker,
       refresh: refreshWorker,
       selectAccount: selectWorkerAccount,
-      enroll: enrollWorker,
       enrollWithCode: enrollWorkerWithCode,
       remove: removeWorker,
     },

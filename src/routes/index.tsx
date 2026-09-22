@@ -27,8 +27,9 @@ export const Route = createFileRoute("/")({
 function Index() {
   // Everything runs in the browser: layout depends on the container size and
   // usage data comes from the configured Worker, with the local log as fallback.
+  // No fallback wrapper: in widget hosts the card itself must be the root element.
   return (
-    <ClientOnly fallback={<div className="h-full w-full bg-background" />}>
+    <ClientOnly fallback={null}>
       <ClawdmeterApp />
     </ClientOnly>
   );

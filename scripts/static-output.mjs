@@ -38,9 +38,7 @@ for (const dir of candidates) {
 }
 
 if (!source) {
-  console.error(
-    "[static-output] no index.html found in: " + candidates.join(", "),
-  );
+  console.error("[static-output] no index.html found in: " + candidates.join(", "));
   process.exit(1);
 }
 
@@ -67,14 +65,7 @@ await copyFile(index, path.join(out, "404.html"));
 
 // Static host receives static files only — drop server-side build artifacts
 // and the now-duplicated nested client directory.
-for (const leftover of [
-  "client",
-  "public",
-  "server",
-  "nitro.json",
-  "_server",
-  "_worker.js",
-]) {
+for (const leftover of ["client", "public", "server", "nitro.json", "_server", "_worker.js"]) {
   const target = path.join(out, leftover);
   if (path.resolve(target) === path.resolve(out)) continue;
   await rm(target, { recursive: true, force: true });

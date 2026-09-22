@@ -16,13 +16,23 @@ export function Stat({
   compact?: boolean;
 }) {
   const toneClass =
-    tone === "ok" ? "text-ok" : tone === "warn" ? "text-warn" : tone === "crit" ? "text-crit" : "text-foreground";
+    tone === "ok"
+      ? "text-ok"
+      : tone === "warn"
+        ? "text-warn"
+        : tone === "crit"
+          ? "text-crit"
+          : "text-foreground";
   return (
     <div className={cn("min-w-0 rounded-lg bg-surface px-2 py-1.5", compact && "px-1.5 py-1")}>
       <div className="truncate text-[0.55rem] font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </div>
-      <div className={cn("numerals truncate font-bold", toneClass, compact ? "text-xs" : "text-sm")}>{value}</div>
+      <div
+        className={cn("numerals truncate font-bold", toneClass, compact ? "text-xs" : "text-sm")}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -103,7 +113,15 @@ export function AlertStrip({ snapshot, compact }: { snapshot: Snapshot; compact?
   );
 }
 
-export function RunwayVerdict({ snapshot, compact, unavailable }: { snapshot: Snapshot; compact?: boolean; unavailable?: boolean }) {
+export function RunwayVerdict({
+  snapshot,
+  compact,
+  unavailable,
+}: {
+  snapshot: Snapshot;
+  compact?: boolean;
+  unavailable?: boolean;
+}) {
   const safe = !snapshot.limitBeforeReset;
   return (
     <div
@@ -118,8 +136,8 @@ export function RunwayVerdict({ snapshot, compact, unavailable }: { snapshot: Sn
         {unavailable
           ? "Pace needs browser-observed samples"
           : safe
-          ? `Runway clear · pace ${snapshot.paceRatio.toFixed(2)}x`
-          : `Limit before reset · pace ${snapshot.paceRatio.toFixed(2)}x`}
+            ? `Runway clear · pace ${snapshot.paceRatio.toFixed(2)}x`
+            : `Limit before reset · pace ${snapshot.paceRatio.toFixed(2)}x`}
       </span>
     </div>
   );
@@ -144,7 +162,11 @@ export function LogPad({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <button type="button" className={cn(btn, pad, "text-sonnet")} onClick={() => onLog(1, "sonnet")}>
+      <button
+        type="button"
+        className={cn(btn, pad, "text-sonnet")}
+        onClick={() => onLog(1, "sonnet")}
+      >
         <Plus className="size-3" /> Sonnet
       </button>
       <button type="button" className={cn(btn, pad, "text-opus")} onClick={() => onLog(1, "opus")}>
@@ -158,7 +180,9 @@ export function LogPad({
           <RotateCcw className="size-3" /> Clear
         </button>
       ) : null}
-      <span className="numerals text-[0.55rem] uppercase tracking-widest text-muted-foreground">{unit}</span>
+      <span className="numerals text-[0.55rem] uppercase tracking-widest text-muted-foreground">
+        {unit}
+      </span>
     </div>
   );
 }

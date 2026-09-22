@@ -1,13 +1,20 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "clawdmeter",
+  "version": "0.1.0",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darthrater78/webapp_clawed.git"
+  },
+  "homepage": "https://github.com/darthrater78/webapp_clawed#readme",
   "sideEffects": false,
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && node scripts/static-output.mjs",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && vite build && node scripts/static-output.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "package": "node scripts/package.mjs",
     "build:dev": "vite build --mode development",
-    "worker:check": "wrangler deploy --dry-run --config worker/wrangler.jsonc --outdir /tmp/clawdmeter-worker-check",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -81,11 +88,12 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
-    "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.1.5",
-    "wrangler": "^4.40.0"
+    "vite": "8.1.5"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }

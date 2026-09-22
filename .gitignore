@@ -30,3 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Dev Skills session state
+.claude/dev-skills-gates.md
+
+# Release artifacts built by `npm run package`
+release/
