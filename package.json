@@ -34,7 +34,7 @@
     "@tanstack/router-plugin": "1.168.40",
     "ai-publish-sdk": "^1.13.0",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.575.0",
+    "lucide-react": "^1.47.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tailwind-merge": "^3.7.0",
