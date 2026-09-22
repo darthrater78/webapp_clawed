@@ -1,11 +1,20 @@
 {
-  "$schema": "../node_modules/wrangler/config-schema.json",
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "clawdmeter-usage",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
+  // `npm run deploy` fills this in (it reuses an existing USAGE_KV namespace).
   "kv_namespaces": [{ "binding": "USAGE_KV", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }],
+  // Keeps every enrolled account's Claude tokens refreshed ahead of expiry.
+  "triggers": { "crons": ["*/30 * * * *"] },
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // ALLOWED_ORIGIN, APP_SHARED_KEY and TOKEN_ENCRYPTION_KEY are set after deploy with
+  // `npm run configure`. keep_vars stops a redeploy wiping values set in the dashboard.
+  "keep_vars": true,
   "vars": {
-    "ALLOWED_ORIGIN": "https://REPLACE_WITH_STATIC_APP_ORIGIN",
-    "CLAUDE_TOKEN_URL": "https://platform.claude.com/v1/oauth/token"
+    "CLAUDE_TOKEN_URL": "https://platform.claude.com/v1/oauth/token",
+    "CLAUDE_CLIENT_ID": "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
   }
 }

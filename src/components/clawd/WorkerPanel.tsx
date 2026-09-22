@@ -1,4 +1,16 @@
-import { CheckCircle2, CloudCog, ExternalLink, Loader2, Plus, RefreshCw, Settings2, Trash2, Unplug, X, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  CloudCog,
+  ExternalLink,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Settings2,
+  Trash2,
+  Unplug,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { Clawdmeter } from "@/hooks/useClawdmeter";
@@ -8,7 +20,6 @@ import {
   loadPendingClaudeAuth,
   normalizeWorkerUrl,
   parseClaudeAuthCode,
-  parseClaudeCredentials,
   type PendingClaudeAuth,
   savePendingClaudeAuth,
 } from "@/lib/clawd/worker";
@@ -62,12 +73,18 @@ export function AccountLabel({ meter, className }: { meter: Clawdmeter; classNam
         )}
       >
         {accounts.map((account) => (
-          <option key={account.id} value={account.id}>{account.label}</option>
+          <option key={account.id} value={account.id}>
+            {account.label}
+          </option>
         ))}
       </select>
     );
   }
-  return <span className={cn("truncate", className)}>{reading?.label ?? accounts[0]?.label ?? "Claude usage"}</span>;
+  return (
+    <span className={cn("truncate", className)}>
+      {reading?.label ?? accounts[0]?.label ?? "Claude usage"}
+    </span>
+  );
 }
 
 export function SourceBadge({ meter, compact }: { meter: Clawdmeter; compact?: boolean }) {
@@ -76,7 +93,9 @@ export function SourceBadge({ meter, compact }: { meter: Clawdmeter; compact?: b
   const error = status.state === "error";
   const stale = live && status.stale;
   const label = stale
-    ? "Stale"
+    ? status.needsReauth
+      ? "Re-enrol"
+      : "Stale"
     : live
       ? "Live"
       : error
@@ -92,7 +111,7 @@ export function SourceBadge({ meter, compact }: { meter: Clawdmeter; compact?: b
         error
           ? status.message
           : stale
-            ? "Showing the last successful Worker reading"
+            ? `Showing the last successful Worker reading${status.reason ? ` — ${status.reason}` : ""}`
             : live
               ? "Usage Worker connected"
               : status.state === "empty"
@@ -102,10 +121,19 @@ export function SourceBadge({ meter, compact }: { meter: Clawdmeter; compact?: b
       className={cn(
         "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold uppercase tracking-widest",
         compact ? "text-[0.5rem]" : "text-[0.55rem]",
-        live && !stale ? "bg-ok/15 text-ok" : error ? "bg-crit/15 text-crit" : "bg-surface-2 text-muted-foreground",
+        live && !stale
+          ? "bg-ok/15 text-ok"
+          : error
+            ? "bg-crit/15 text-crit"
+            : "bg-surface-2 text-muted-foreground",
       )}
     >
-      <span className={cn("size-1.5 rounded-full", live && !stale ? "bg-ok" : error ? "bg-crit" : "bg-muted-foreground")} />
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          live && !stale ? "bg-ok" : error ? "bg-crit" : "bg-muted-foreground",
+        )}
+      />
       {label}
     </span>
   );
@@ -113,12 +141,11 @@ export function SourceBadge({ meter, compact }: { meter: Clawdmeter; compact?: b
 
 const input =
   "clawd-field w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground caret-primary outline-none placeholder:text-muted-foreground/60 focus:border-primary";
-const button = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-accent disabled:opacity-50";
+const button =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-accent disabled:opacity-50";
 
 function EnrollForm({ meter, onDone }: { meter: Clawdmeter; onDone: () => void }) {
-  const [mode, setMode] = useState<"signin" | "paste">("signin");
   const [label, setLabel] = useState("");
-  const [paste, setPaste] = useState("");
   const [code, setCode] = useState("");
   const [auth, setAuth] = useState<PendingClaudeAuth | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +156,6 @@ function EnrollForm({ meter, onDone }: { meter: Clawdmeter; onDone: () => void }
     const pending = loadPendingClaudeAuth();
     if (!pending) return;
     setAuth(pending);
-    setMode("signin");
     if (pending.label) setLabel((current) => current || pending.label);
   }, []);
 
@@ -146,7 +172,6 @@ function EnrollForm({ meter, onDone }: { meter: Clawdmeter; onDone: () => void }
     setBusy(false);
     if (!result.ok) return setError(result.message);
     setLabel("");
-    setPaste("");
     setCode("");
     setAuth(null);
     clearPendingClaudeAuth();
@@ -155,104 +180,69 @@ function EnrollForm({ meter, onDone }: { meter: Clawdmeter; onDone: () => void }
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-1 rounded-lg bg-surface p-0.5">
-        {(["signin", "paste"] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => { setMode(option); setError(null); }}
-            className={cn(
-              "flex-1 rounded-md px-2 py-1 text-[0.65rem] font-semibold transition-colors",
-              mode === option ? "bg-surface-2 text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {option === "signin" ? "Sign in with Claude" : "Paste credentials"}
-          </button>
-        ))}
-      </div>
-
       <label className="block space-y-1">
-        <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">Account name</span>
-        <input className={input} value={label} onChange={(event) => setLabel(event.target.value)} placeholder="My Claude Max" />
+        <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+          Account name
+        </span>
+        <input
+          className={input}
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+          placeholder="My Claude Max"
+        />
       </label>
 
-      {mode === "signin" ? (
-        <form
-          className="space-y-2"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const parsed = parseClaudeAuthCode(code);
-            if (!label.trim()) return setError("Give this account a name.");
-            if (!auth) return setError("Open the Claude sign-in link first.");
-            if (!parsed) return setError("Paste the code Claude showed you after approving.");
-            setBusy(true);
-            setError(null);
-            await finish(
-              await meter.worker.enrollWithCode({
-                label: label.trim(),
-                code: parsed.code,
-                state: parsed.state || auth.state,
-                verifier: auth.verifier,
-              }),
-            );
-          }}
+      <form
+        className="space-y-2"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const parsed = parseClaudeAuthCode(code);
+          if (!label.trim()) return setError("Give this account a name.");
+          if (!auth) return setError("Open the Claude sign-in link first.");
+          if (!parsed) return setError("Paste the code Claude showed you after approving.");
+          setBusy(true);
+          setError(null);
+          await finish(
+            await meter.worker.enrollWithCode({
+              label: label.trim(),
+              code: parsed.code,
+              state: parsed.state || auth.state,
+              verifier: auth.verifier,
+            }),
+          );
+        }}
+      >
+        <button
+          type="button"
+          className={cn(button, "w-full text-primary")}
+          onClick={() => void startSignIn()}
         >
-          <button type="button" className={cn(button, "w-full text-primary")} onClick={() => void startSignIn()}>
-            <ExternalLink className="size-3" /> {auth ? "Reopen Claude sign-in" : "Open Claude sign-in"}
-          </button>
-          <label className="block space-y-1">
-            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">Code from Claude</span>
-            <input
-              className={cn(input, "font-mono text-[0.65rem]")}
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              spellCheck={false}
-              placeholder="paste the code Claude shows you"
-            />
-          </label>
-          <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
-            The link opens Claude&apos;s own approval page. Approve access, copy the code it shows, and paste it here. Your Worker
-            swaps it for tokens, keeps them encrypted, and this browser never stores them.
-          </p>
-          {error ? <p className="text-[0.65rem] font-semibold text-crit">{error}</p> : null}
-          <button type="submit" className={cn(button, "w-full text-primary")} disabled={busy}>
-            {busy ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />} Finish adding account
-          </button>
-        </form>
-      ) : (
-        <form
-          className="space-y-2"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const credentials = parseClaudeCredentials(paste);
-            if (!label.trim()) return setError("Give this account a name.");
-            if (!credentials) return setError("That does not look like Claude Code credentials. Paste the whole contents of the file.");
-            setBusy(true);
-            setError(null);
-            await finish(await meter.worker.enroll({ label: label.trim(), ...credentials }));
-          }}
-        >
-          <label className="block space-y-1">
-            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">Claude Code credentials</span>
-            <textarea
-              className={cn(input, "h-24 font-mono text-[0.65rem] leading-relaxed")}
-              value={paste}
-              onChange={(event) => setPaste(event.target.value)}
-              spellCheck={false}
-              placeholder={'{"claudeAiOauth":{"accessToken":"…","refreshToken":"…","expiresAt":1780000000000}}'}
-            />
-          </label>
-          <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
-            On a computer where you use Claude Code, open <span className="font-mono">~/.claude/.credentials.json</span> (macOS: the
-            “Claude Code” item in Keychain) and paste its contents here. It is sent once to your Worker, encrypted there, and never
-            kept in this browser.
-          </p>
-          {error ? <p className="text-[0.65rem] font-semibold text-crit">{error}</p> : null}
-          <button type="submit" className={cn(button, "w-full text-primary")} disabled={busy}>
-            {busy ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />} Add account
-          </button>
-        </form>
-      )}
+          <ExternalLink className="size-3" />{" "}
+          {auth ? "Reopen Claude sign-in" : "Open Claude sign-in"}
+        </button>
+        <label className="block space-y-1">
+          <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+            Code from Claude
+          </span>
+          <input
+            className={cn(input, "font-mono text-[0.65rem]")}
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            spellCheck={false}
+            placeholder="paste the code Claude shows you"
+          />
+        </label>
+        <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
+          The link opens Claude&apos;s own approval page. Approve access, copy the code it shows,
+          and paste it here. Your Worker swaps it for tokens, keeps them encrypted, and this browser
+          never stores them.
+        </p>
+        {error ? <p className="text-[0.65rem] font-semibold text-crit">{error}</p> : null}
+        <button type="submit" className={cn(button, "w-full text-primary")} disabled={busy}>
+          {busy ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />} Finish
+          adding account
+        </button>
+      </form>
     </div>
   );
 }
@@ -286,16 +276,22 @@ function AppOriginField() {
   let field: HTMLInputElement | null = null;
   return (
     <div className="space-y-1 rounded-lg border border-border bg-surface px-2.5 py-2">
-      <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">This app&apos;s address</span>
+      <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+        This app&apos;s address
+      </span>
       <div className="flex gap-1.5">
         <input
-          ref={(element) => { field = element; }}
+          ref={(element) => {
+            field = element;
+          }}
           className={cn(input, "font-mono text-[0.65rem]")}
           value={origin}
           readOnly
           onFocus={(event) => event.currentTarget.select()}
         />
-        <button type="button" className={cn(button, "shrink-0")} onClick={() => copy(field)}>Copy</button>
+        <button type="button" className={cn(button, "shrink-0")} onClick={() => copy(field)}>
+          Copy
+        </button>
       </div>
       <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
         {copied === "done"
@@ -309,9 +305,11 @@ function AppOriginField() {
 }
 
 export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
-  const { config, status, reading, accounts, connect, disconnect, refresh, selectAccount, remove } = meter.worker;
+  const { config, status, reading, accounts, connect, disconnect, refresh, selectAccount, remove } =
+    meter.worker;
   const [url, setUrl] = useState(config?.baseUrl ?? "");
   const [appKey, setAppKey] = useState("");
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const connected = config !== null;
   const showEnroll = adding || accounts.length === 0;
@@ -332,20 +330,34 @@ export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
             <div className="truncate font-semibold">{config.baseUrl}</div>
             <div className="mt-1 flex items-center gap-1.5 text-muted-foreground">
               {status.state === "live" ? (
-                <><CheckCircle2 className="size-3 shrink-0 text-ok" /><span className="numerals truncate">{status.stale ? "cached" : "updated"} {new Date(status.at).toLocaleTimeString()}</span></>
+                <>
+                  <CheckCircle2 className="size-3 shrink-0 text-ok" />
+                  <span className="numerals truncate" title={status.reason}>
+                    {status.stale ? "cached" : "updated"} {new Date(status.at).toLocaleTimeString()}
+                    {status.stale && status.reason ? ` — ${status.reason}` : ""}
+                  </span>
+                </>
               ) : status.state === "error" ? (
-                <><XCircle className="size-3 shrink-0 text-crit" /><span className="text-crit">{status.message}</span></>
+                <>
+                  <XCircle className="size-3 shrink-0 text-crit" />
+                  <span className="text-crit">{status.message}</span>
+                </>
               ) : status.state === "empty" ? (
                 <span>Connected. Add your Claude account below.</span>
               ) : (
-                <><Loader2 className="size-3 shrink-0 animate-spin" /><span>Connecting…</span></>
+                <>
+                  <Loader2 className="size-3 shrink-0 animate-spin" />
+                  <span>Connecting…</span>
+                </>
               )}
             </div>
           </div>
 
           {accounts.length > 0 ? (
             <div className="space-y-1">
-              <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">Your accounts</span>
+              <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+                Your accounts
+              </span>
               {accounts.map((account) => (
                 <div
                   key={account.id}
@@ -354,7 +366,11 @@ export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
                     account.id === (reading?.accountId ?? config.accountId) ? "border-primary" : "",
                   )}
                 >
-                  <button type="button" className="min-w-0 flex-1 truncate text-left font-semibold" onClick={() => selectAccount(account.id)}>
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left font-semibold"
+                    onClick={() => selectAccount(account.id)}
+                  >
                     {account.label}
                   </button>
                   <button
@@ -380,24 +396,71 @@ export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
           )}
 
           <div className="flex gap-2">
-            <button type="button" className={button} onClick={refresh}><RefreshCw className="size-3" /> Refresh now</button>
-            <button type="button" className={cn(button, "text-muted-foreground")} onClick={() => { disconnect(); setAppKey(""); }}><Unplug className="size-3" /> Disconnect</button>
+            <button type="button" className={button} onClick={refresh}>
+              <RefreshCw className="size-3" /> Refresh now
+            </button>
+            <button
+              type="button"
+              className={cn(button, "text-muted-foreground")}
+              onClick={() => {
+                disconnect();
+                setAppKey("");
+              }}
+            >
+              <Unplug className="size-3" /> Disconnect
+            </button>
           </div>
-          <p className="text-[0.65rem] leading-relaxed text-muted-foreground">Polling every two minutes. Only this browser can see the accounts it enrolled.</p>
+          <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
+            Polling every two minutes. Only this browser can see the accounts it enrolled.
+          </p>
           <AppOriginField />
         </div>
       ) : (
-        <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); const baseUrl = normalizeWorkerUrl(url); if (!baseUrl || !appKey.trim()) return; connect({ baseUrl, appKey: appKey.trim() }); }}>
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const baseUrl = normalizeWorkerUrl(url);
+            if (!baseUrl || !appKey.trim())
+              return setUrlError(baseUrl ? null : "Enter the Worker's https:// address.");
+            setUrlError(null);
+            connect({ baseUrl, appKey: appKey.trim() });
+          }}
+        >
           <label className="block space-y-1">
-            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">Worker address</span>
-            <input className={input} value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://clawdmeter.example.workers.dev" autoComplete="url" spellCheck={false} />
+            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+              Worker address
+            </span>
+            <input
+              className={input}
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="https://clawdmeter.example.workers.dev"
+              autoComplete="url"
+              spellCheck={false}
+            />
           </label>
           <label className="block space-y-1">
-            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">Shared app key</span>
-            <input className={input} value={appKey} onChange={(event) => setAppKey(event.target.value)} type="password" autoComplete="off" spellCheck={false} />
+            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+              Shared app key
+            </span>
+            <input
+              className={input}
+              value={appKey}
+              onChange={(event) => setAppKey(event.target.value)}
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+            />
           </label>
-          <button type="submit" className={cn(button, "w-full text-primary")}><CloudCog className="size-3" /> Connect</button>
-          <p className="text-[0.65rem] leading-relaxed text-muted-foreground">Use the app key from whoever deployed the Worker. Next you will add your own Claude account.</p>
+          {urlError ? <p className="text-[0.65rem] font-semibold text-crit">{urlError}</p> : null}
+          <button type="submit" className={cn(button, "w-full text-primary")}>
+            <CloudCog className="size-3" /> Connect
+          </button>
+          <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
+            Use the app key from whoever deployed the Worker. Next you will add your own Claude
+            account.
+          </p>
           <AppOriginField />
         </form>
       )}

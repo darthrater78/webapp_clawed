@@ -10,12 +10,6 @@ export type WorkerConfig = {
 
 export type WorkerAccount = { id: string; label: string };
 
-export type ClaudeCredentials = {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-};
-
 export type UsageWindow = {
   utilization: number;
   resetsAt: string | null;
@@ -26,6 +20,10 @@ export type WorkerReading = {
   label: string;
   fetchedAt: string;
   stale: boolean;
+  /** Why the Worker could not refresh this reading, when it is stale. */
+  error?: string;
+  /** The stored sign-in is dead; the account must be removed and enrolled again. */
+  needsReauth?: boolean;
   fiveHour: UsageWindow;
   sevenDay: UsageWindow;
   sevenDaySonnet: UsageWindow | null;
@@ -36,7 +34,7 @@ export type WorkerStatus =
   | { state: "off" }
   | { state: "connecting" }
   | { state: "empty" }
-  | { state: "live"; at: number; stale: boolean }
+  | { state: "live"; at: number; stale: boolean; reason?: string; needsReauth?: boolean }
   | { state: "error"; message: string; at: number };
 
 export type DayPeaks = Record<string, number>;
@@ -45,10 +43,18 @@ const CONFIG_KEY = "clawdmeter.worker.v1";
 const HISTORY_KEY = "clawdmeter.worker.history.v1";
 const key = (userId: string | null, base: string) => (userId ? `${base}.${userId}` : base);
 
+/** The app key travels with every request, so only https (or a local dev Worker) is accepted. */
 export function normalizeWorkerUrl(input: string): string {
   const trimmed = input.trim().replace(/\/+$/, "");
   if (!trimmed) return "";
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    if (url.protocol !== "https:" && !(local && url.protocol === "http:")) return "";
+    return url.origin;
+  } catch {
+    return "";
+  }
 }
 
 /** Minted once per browser and never sent anywhere except this Worker. */
@@ -64,12 +70,15 @@ export function loadWorkerConfig(userId: string | null): WorkerConfig | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<WorkerConfig>;
     if (!parsed.baseUrl || !parsed.appKey) return null;
-    return {
+    const config: WorkerConfig = {
       baseUrl: parsed.baseUrl,
       appKey: parsed.appKey,
       ownerKey: parsed.ownerKey || createOwnerKey(),
       ...(typeof parsed.accountId === "string" ? { accountId: parsed.accountId } : {}),
     };
+    // A freshly minted owner key must be kept, or the accounts it enrols become unreachable.
+    if (!parsed.ownerKey) window.localStorage.setItem(key(userId, CONFIG_KEY), JSON.stringify(config));
+    return config;
   } catch {
     return null;
   }
@@ -129,55 +138,10 @@ export async function fetchWorkerAccounts(config: WorkerConfig, signal?: AbortSi
   return Array.isArray(data.accounts) ? data.accounts : [];
 }
 
-export async function enrollWorkerAccount(
-  config: WorkerConfig,
-  account: { label: string } & ClaudeCredentials,
-) {
-  const data = await workerJson<{ account: WorkerAccount }>(config, "/api/accounts", {
-    method: "POST",
-    body: account,
-  });
-  return data.account;
-}
-
 export async function removeWorkerAccount(config: WorkerConfig, accountId: string) {
   await workerJson<{ ok: boolean }>(config, `/api/accounts/${encodeURIComponent(accountId)}`, {
     method: "DELETE",
   });
-}
-
-/**
- * Accepts the Claude Code credentials file, its inner object, or a plain
- * {accessToken, refreshToken, expiresAt} shape pasted by hand.
- */
-export function parseClaudeCredentials(input: string): ClaudeCredentials | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(input.trim());
-  } catch {
-    return null;
-  }
-  const candidates: unknown[] = [parsed];
-  if (parsed && typeof parsed === "object") {
-    for (const value of Object.values(parsed as Record<string, unknown>)) {
-      if (value && typeof value === "object") candidates.push(value);
-    }
-  }
-  for (const candidate of candidates) {
-    if (!candidate || typeof candidate !== "object") continue;
-    const record = candidate as Record<string, unknown>;
-    const accessToken = record["accessToken"] ?? record["access_token"];
-    const refreshToken = record["refreshToken"] ?? record["refresh_token"];
-    const expires = record["expiresAt"] ?? record["expires_at"];
-    if (typeof accessToken === "string" && accessToken && typeof refreshToken === "string" && refreshToken) {
-      return {
-        accessToken,
-        refreshToken,
-        expiresAt: typeof expires === "number" ? expires : Number(expires) || 0,
-      };
-    }
-  }
-  return null;
 }
 
 /* ------------------------------------------------- sign in with Claude (PKCE) */
@@ -275,7 +239,7 @@ export async function enrollWorkerAccountWithCode(
 ) {
   const data = await workerJson<{ account: WorkerAccount }>(config, "/api/accounts/oauth", {
     method: "POST",
-    body: { ...account, redirectUri: CLAUDE_REDIRECT_URI, clientId: CLAUDE_CLIENT_ID },
+    body: account,
   });
   return data.account;
 }

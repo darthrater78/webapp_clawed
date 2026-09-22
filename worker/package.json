@@ -1,0 +1,19 @@
+{
+  "name": "clawdmeter-usage-worker",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker that holds Claude credentials for Clawdmeter. Deployed separately from the static app.",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "deploy": "node scripts/worker.mjs deploy",
+    "configure": "node scripts/worker.mjs configure",
+    "status": "node scripts/worker.mjs status",
+    "check": "wrangler deploy --dry-run --config wrangler.jsonc --outdir .wrangler/check",
+    "tail": "wrangler tail --config wrangler.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "4.136.1"
+  }
+}

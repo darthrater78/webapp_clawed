@@ -85,7 +85,7 @@ export function AccountsStrip({
                   {account.label}
                 </span>
                 <span className="numerals shrink-0 text-[0.55rem] uppercase tracking-widest text-muted-foreground">
-                  {reading ? (reading.stale ? "stale" : "live") : "…"}
+                  {reading ? (reading.needsReauth ? "re-enrol" : reading.stale ? "stale" : "live") : "…"}
                 </span>
               </div>
 

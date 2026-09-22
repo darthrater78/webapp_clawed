@@ -3,10 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { emit, loadHostIdentity, type HostIdentity } from "@/lib/clawd/host";
 import {
   buildWorkerSnapshot,
-  type ClaudeCredentials,
   createOwnerKey,
   type DayPeaks,
-  enrollWorkerAccount,
   enrollWorkerAccountWithCode,
   fetchWorkerAccounts,
   fetchWorkerReading,
@@ -120,7 +118,13 @@ export function useClawdmeter() {
           const peaks = recordWorkerPeak(userId, entry.accountId, entry.sevenDay.utilization, at);
           if (entry.accountId === reading.accountId) setWorkerPeaks(peaks);
         }
-        setWorkerStatus({ state: "live", at, stale: reading.stale });
+        setWorkerStatus({
+          state: "live",
+          at,
+          stale: reading.stale,
+          ...(reading.stale && reading.error ? { reason: reading.error } : {}),
+          ...(reading.needsReauth ? { needsReauth: true } : {}),
+        });
         if (accountId !== config.accountId) applyConfig({ ...config, accountId });
       } catch (err) {
         if (signal?.aborted) return;
@@ -163,24 +167,6 @@ export function useClawdmeter() {
   }, [applyConfig]);
 
   const refreshWorker = useCallback(() => void pollWorker(), [pollWorker]);
-
-  /** Send one Claude account's credentials to the Worker for this browser only. */
-  const enrollWorker = useCallback(
-    async (account: { label: string } & ClaudeCredentials) => {
-      const config = configRef.current;
-      if (!config) return { ok: false as const, message: "Connect to the Worker first." };
-      try {
-        const created = await enrollWorkerAccount(config, account);
-        applyConfig({ ...config, accountId: created.id });
-        emit("worker_account_enrolled");
-        await pollWorker();
-        return { ok: true as const };
-      } catch (err) {
-        return { ok: false as const, message: err instanceof Error ? err.message : "The Worker rejected that account." };
-      }
-    },
-    [applyConfig, pollWorker],
-  );
 
   /** Finish "Sign in with Claude": hand the one-time code to the Worker. */
   const enrollWorkerWithCode = useCallback(
@@ -311,7 +297,6 @@ export function useClawdmeter() {
       disconnect: disconnectWorker,
       refresh: refreshWorker,
       selectAccount: selectWorkerAccount,
-      enroll: enrollWorker,
       enrollWithCode: enrollWorkerWithCode,
       remove: removeWorker,
     },
