@@ -43,19 +43,52 @@ This reuses an existing `USAGE_KV` namespace (or creates one), writes its ID int
 
 ## Configure (any time after deploy)
 
-The app origin and the two keys usually aren't known on day one, so they are set separately and can be set in any order:
+Three settings, which can be set in any order, whenever they are known. They are stored as Worker secrets and take effect immediately, with no redeploy.
+
+| Setting                | What it is                                                   | Who needs it            |
+| ---------------------- | ------------------------------------------------------------ | ----------------------- |
+| `ALLOWED_ORIGIN`       | The web address(es) the Clawdmeter app is served from (CORS) | Only the Worker         |
+| `APP_SHARED_KEY`       | The shared key people enter in the app to connect            | Everyone using the app  |
+| `TOKEN_ENCRYPTION_KEY` | Encrypts the stored Claude sign-ins                          | Nobody: keep it private |
+
+### Guided setup
+
+In a terminal, from `worker/`:
 
 ```sh
-npm run configure                                     # generates APP_SHARED_KEY + TOKEN_ENCRYPTION_KEY if missing
-npm run configure -- --origin https://clawdmeter.example.com   # sets ALLOWED_ORIGIN (comma-separate several)
-npm run status -- https://clawdmeter-usage.<you>.workers.dev   # shows what is still missing
+npm run configure
 ```
 
-- Values are stored as Worker secrets and take effect immediately. No redeploy is needed.
-- The app key is printed **once** when it is generated. Share it with Clawdmeter users.
-- Existing keys are never overwritten. `--rotate-app-key` issues a new app key. `--rotate-encryption-key --yes` issues a new encryption key and **makes every enrolled account unreadable**.
-- Secrets reach Wrangler over stdin, so they never appear in shell history or process lists.
-- A value set in the Cloudflare dashboard as a plain variable is kept across redeploys (`keep_vars`). To manage it with `npm run configure` instead, delete it from the dashboard first.
+For each setting it shows whether it is already set, then asks what to do:
+
+- **Origin:** type the address(es), comma-separated, or press Enter to leave it as is.
+- **Each key:** **keep** it (only offered when set), **generate** a new random one, or **enter your own**. Your own value is typed hidden and asked for twice. It must be at least 32 characters with no spaces.
+- **Replacing a key that is already set** needs you to type `yes`. A new app key means everyone has to reconnect. A new encryption key makes every account enrolled under the old one unreadable.
+
+It lists what will change and applies nothing until you confirm. Generated keys are printed **once**, because Cloudflare never shows secrets again:
+
+- Give the **app key** to Clawdmeter users.
+- Store the **encryption key** somewhere private, such as a password manager. Re-entering it is the only way to keep enrolled accounts readable if the Worker is ever rebuilt.
+
+Keys you typed yourself are never printed.
+
+### Without prompts (scripts and automation)
+
+Passing any option, or running without a terminal, skips the questions:
+
+```sh
+npm run configure -- --origin https://clawdmeter.example.com   # set or change the origin
+npm run configure -- --app-key                                 # enter your own app key (hidden prompt, or piped in)
+npm run configure -- --encryption-key --yes                    # enter your own encryption key over an existing one
+npm run configure -- --rotate-app-key                          # generate a new app key
+npm run configure -- --rotate-encryption-key --yes             # generate a new encryption key
+```
+
+In this mode, any key that is missing is generated. Existing keys are only replaced when you ask, and replacing the encryption key always needs `--yes`. Values are never taken as command-line arguments: they reach Wrangler over stdin, so they stay out of shell history and process lists. To pipe in a value, use `printf '%s' "$KEY" | npm run configure -- --app-key`.
+
+Check the result with `npm run status -- https://clawdmeter-usage.<your-subdomain>.workers.dev`.
+
+If `ALLOWED_ORIGIN` (or either key) already exists as a **plain variable** set in the Cloudflare dashboard, Cloudflare won't let a secret of the same name be created. Delete the variable under _Worker → Settings → Variables and Secrets_ first. Plain variables are otherwise kept across redeploys (`keep_vars`).
 
 ## Updating an existing Worker
 
@@ -74,11 +107,24 @@ Updating replaces only the code. Your KV storage, secrets (`APP_SHARED_KEY`, `TO
 
    This finds your existing `USAGE_KV` namespace by name. If yours has a different title, first replace `REPLACE_WITH_KV_NAMESPACE_ID` in `wrangler.jsonc` with its ID (`npx wrangler kv namespace list` shows it).
 
-5. **Check it:** `npm run status -- https://clawdmeter-usage.<your-subdomain>.workers.dev` should print `✔ Worker is fully configured`. If it lists anything missing, run `npm run configure`. It never replaces keys that already exist.
+5. **Check it:** `npm run status -- https://clawdmeter-usage.<your-subdomain>.workers.dev` should print `✔ Worker is fully configured`. If it lists anything missing, run `npm run configure`. It keeps existing keys unless you choose to replace them. To update the origin or keys at any time, see [Configure](#configure-any-time-after-deploy).
 6. **Watch the first refresh:** `npm run tail`. Within 30 minutes the cron logs `token refresh: N accounts checked, 0 need attention`.
 7. **Tidy up:** deploy writes your KV namespace ID into `wrangler.jsonc`. It isn't needed in the repo because the next deploy looks it up again, so discard the change with `git restore worker/wrangler.jsonc`.
 
 Also update the static app to the same version. Older app builds can still read usage, but they offer the credential-paste option, which the Worker no longer accepts.
+
+### Updating into a Worker with no settings
+
+If the Worker you are deploying to has none of the three settings (a new or reset Worker), deploy first, then run the guided setup:
+
+```sh
+npm run deploy
+npm run configure
+```
+
+1. **Origin:** enter the app's address.
+2. **App key:** **generate** a new one and hand it out, or **enter** the key your users already have so nobody needs a new one.
+3. **Encryption key:** if the Worker still uses the same `USAGE_KV` storage as before and you have the **previous encryption key**, choose **enter your own** and type it in, and every enrolled account stays readable. Otherwise choose **generate**. Existing accounts then show **Re-enrol**, and each person removes theirs and signs in again.
 
 ### Updating from a Worker older than v0.1.0
 
