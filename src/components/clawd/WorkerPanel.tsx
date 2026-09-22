@@ -92,31 +92,36 @@ export function SourceBadge({ meter, compact }: { meter: Clawdmeter; compact?: b
   const live = status.state === "live";
   const error = status.state === "error";
   const stale = live && status.stale;
-  const label = stale
-    ? status.needsReauth
-      ? "Re-enrol"
-      : "Stale"
-    : live
-      ? "Live"
-      : error
-        ? "Error"
-        : status.state === "connecting"
-          ? "…"
-          : status.state === "empty"
-            ? "Enrol"
-            : "Local";
+  const label =
+    status.state === "locked"
+      ? "Locked"
+      : stale
+        ? status.needsReauth
+          ? "Re-enrol"
+          : "Stale"
+        : live
+          ? "Live"
+          : error
+            ? "Error"
+            : status.state === "connecting"
+              ? "…"
+              : status.state === "empty"
+                ? "Enrol"
+                : "Local";
   return (
     <span
       title={
-        error
-          ? status.message
-          : stale
-            ? `Showing the last successful Worker reading${status.reason ? ` — ${status.reason}` : ""}`
-            : live
-              ? "Usage Worker connected"
-              : status.state === "empty"
-                ? "Connected — add your Claude account"
-                : "Counting locally"
+        status.state === "locked"
+          ? "Enter the app key to resume live usage"
+          : error
+            ? status.message
+            : stale
+              ? `Showing the last successful Worker reading${status.reason ? ` — ${status.reason}` : ""}`
+              : live
+                ? "Usage Worker connected"
+                : status.state === "empty"
+                  ? "Connected — add your Claude account"
+                  : "Counting locally"
       }
       className={cn(
         "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold uppercase tracking-widest",
@@ -305,13 +310,24 @@ function AppOriginField() {
 }
 
 export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
-  const { config, status, reading, accounts, connect, disconnect, refresh, selectAccount, remove } =
-    meter.worker;
+  const {
+    config,
+    status,
+    reading,
+    accounts,
+    connect,
+    unlock,
+    disconnect,
+    refresh,
+    selectAccount,
+    remove,
+  } = meter.worker;
   const [url, setUrl] = useState(config?.baseUrl ?? "");
   const [appKey, setAppKey] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const connected = config !== null;
+  const locked = connected && !config.appKey;
   const showEnroll = adding || accounts.length === 0;
 
   return (
@@ -324,7 +340,52 @@ export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
         <SourceBadge meter={meter} />
       </div>
 
-      {connected ? (
+      {locked ? (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (appKey.trim()) unlock(appKey.trim());
+          }}
+        >
+          <div className="rounded-lg bg-surface px-2.5 py-2 text-xs">
+            <div className="truncate font-semibold">{config.baseUrl}</div>
+            <div className="mt-1 text-muted-foreground">Locked. Enter the app key to continue.</div>
+          </div>
+          <label className="block space-y-1">
+            <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
+              Shared app key
+            </span>
+            <input
+              className={input}
+              value={appKey}
+              onChange={(event) => setAppKey(event.target.value)}
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              autoFocus
+            />
+          </label>
+          <button type="submit" className={cn(button, "w-full text-primary")}>
+            <CloudCog className="size-3" /> Unlock
+          </button>
+          <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
+            Why again? The app key is kept only in this page&apos;s memory and is never saved in the
+            browser, so no other script running here can read it later. Reloading the page clears
+            it. Your enrolled accounts stay on the Worker and come back as soon as you unlock.
+          </p>
+          <button
+            type="button"
+            className={cn(button, "w-full text-muted-foreground")}
+            onClick={() => {
+              disconnect();
+              setAppKey("");
+            }}
+          >
+            <Unplug className="size-3" /> Forget this Worker
+          </button>
+        </form>
+      ) : connected ? (
         <div className="space-y-2">
           <div className="rounded-lg bg-surface px-2.5 py-2 text-xs">
             <div className="truncate font-semibold">{config.baseUrl}</div>
@@ -458,8 +519,9 @@ export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
             <CloudCog className="size-3" /> Connect
           </button>
           <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
-            Use the app key from whoever deployed the Worker. Next you will add your own Claude
-            account.
+            Use the app key from whoever deployed the Worker. It is kept in memory only and never
+            saved in this browser, so you will enter it again after each reload. Next you will add
+            your own Claude account.
           </p>
           <AppOriginField />
         </form>

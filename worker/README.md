@@ -7,7 +7,7 @@ This folder is its own npm package and deploys separately from the static app. I
 ## How enrolment works
 
 1. An admin deploys this Worker once and hands out the app key.
-2. Each person enters the Worker address and app key in Clawdmeter.
+2. Each person enters the Worker address and app key in Clawdmeter. The app keeps the key in memory only, so it is asked for again after each page reload.
 3. Each person adds their Claude account with **Sign in with Claude** (OAuth with PKCE). The Worker swaps the one-time code for tokens, encrypts them, and ties them to a random key that only that browser holds — nobody else can list or read those accounts. Pasted credential files are not accepted.
 
 ## Deploy (one command)
@@ -67,7 +67,7 @@ Watch it with `npm run tail`, or in the dashboard under Workers Logs. Each cron 
 
 | Reason                                                  | Fix                                                                                                            |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `Claude token refresh failed (400)`                     | Worker older than 1.1 refreshed without `client_id`. Redeploy with `npm run deploy`.                           |
+| `Claude token refresh failed (400)`                     | Worker deployed before v0.1.0 refreshed without `client_id`. Redeploy with `npm run deploy`.                   |
 | `Claude no longer accepts this account's saved sign-in` | The refresh token was revoked (signed out, or access removed in Claude). Remove the account and sign in again. |
 | `Claude usage request failed (429)`                     | Claude is rate-limiting. The Worker backs off for five minutes.                                                |
 

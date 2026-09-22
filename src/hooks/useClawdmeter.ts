@@ -81,6 +81,7 @@ export function useClawdmeter() {
     async (signal?: AbortSignal) => {
       const config = configRef.current;
       if (!config) return;
+      if (!config.appKey) return setWorkerStatus({ state: "locked" });
       setWorkerStatus((previous) =>
         previous.state === "live" ? previous : { state: "connecting" },
       );
@@ -147,6 +148,10 @@ export function useClawdmeter() {
       setWorkerAccounts([]);
       return;
     }
+    if (!workerConfig.appKey) {
+      setWorkerStatus({ state: "locked" });
+      return;
+    }
     const controller = new AbortController();
     void pollWorker(controller.signal);
     const id = window.setInterval(() => void pollWorker(controller.signal), WORKER_POLL_MS);
@@ -160,6 +165,15 @@ export function useClawdmeter() {
     (config: { baseUrl: string; appKey: string }) => {
       applyConfig({ ...config, ownerKey: createOwnerKey() });
       emit("worker_connected");
+    },
+    [applyConfig],
+  );
+
+  /** Re-enter the app key after a reload; it is never read back from storage. */
+  const unlockWorker = useCallback(
+    (appKey: string) => {
+      const config = configRef.current;
+      if (config) applyConfig({ ...config, appKey });
     },
     [applyConfig],
   );
@@ -300,6 +314,7 @@ export function useClawdmeter() {
       compare: compareAccounts,
       setCompare: setCompareAccounts,
       connect: connectWorker,
+      unlock: unlockWorker,
       disconnect: disconnectWorker,
       refresh: refreshWorker,
       selectAccount: selectWorkerAccount,

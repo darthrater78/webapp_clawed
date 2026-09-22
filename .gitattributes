@@ -1,0 +1,6 @@
+# Kept out of the app source zip (`git archive`, used by `npm run package`).
+# The Worker deploys separately; CI and editor state never ship.
+worker/ export-ignore
+.github/ export-ignore
+.claude/ export-ignore
+.gitattributes export-ignore

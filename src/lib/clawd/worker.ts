@@ -2,6 +2,10 @@ import { clamp, type Level, type Mood, type Snapshot, SESSION_MS, WEEK_MS } from
 
 export type WorkerConfig = {
   baseUrl: string;
+  /**
+   * Held in memory only, never written to browser storage, so a script running on
+   * this origin later cannot lift it. Empty until entered in this session.
+   */
   appKey: string;
   /** Random per-browser key. Only this browser can read the accounts it enrolled. */
   ownerKey: string;
@@ -32,6 +36,8 @@ export type WorkerReading = {
 
 export type WorkerStatus =
   | { state: "off" }
+  /** Worker known, but the app key has not been entered since this page loaded. */
+  | { state: "locked" }
   | { state: "connecting" }
   | { state: "empty" }
   | { state: "live"; at: number; stale: boolean; reason?: string; needsReauth?: boolean }
@@ -69,16 +75,17 @@ export function loadWorkerConfig(userId: string | null): WorkerConfig | null {
     const raw = window.localStorage.getItem(key(userId, CONFIG_KEY));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<WorkerConfig>;
-    if (!parsed.baseUrl || !parsed.appKey) return null;
+    if (!parsed.baseUrl) return null;
     const config: WorkerConfig = {
       baseUrl: parsed.baseUrl,
-      appKey: parsed.appKey,
+      // Older versions saved the app key; use it for this session only.
+      appKey: typeof parsed.appKey === "string" ? parsed.appKey : "",
       ownerKey: parsed.ownerKey || createOwnerKey(),
       ...(typeof parsed.accountId === "string" ? { accountId: parsed.accountId } : {}),
     };
-    // A freshly minted owner key must be kept, or the accounts it enrols become unreachable.
-    if (!parsed.ownerKey)
-      window.localStorage.setItem(key(userId, CONFIG_KEY), JSON.stringify(config));
+    // Keep a freshly minted owner key (or its accounts become unreachable), and
+    // scrub an app key left behind by an older version.
+    if (!parsed.ownerKey || parsed.appKey !== undefined) saveWorkerConfig(userId, config);
     return config;
   } catch {
     return null;
@@ -89,8 +96,10 @@ export function saveWorkerConfig(userId: string | null, config: WorkerConfig | n
   if (typeof window === "undefined") return;
   try {
     const storageKey = key(userId, CONFIG_KEY);
-    if (config) window.localStorage.setItem(storageKey, JSON.stringify(config));
-    else window.localStorage.removeItem(storageKey);
+    if (config) {
+      const { appKey: _memoryOnly, ...persisted } = config;
+      window.localStorage.setItem(storageKey, JSON.stringify(persisted));
+    } else window.localStorage.removeItem(storageKey);
   } catch {
     // The live session still works when browser storage is blocked.
   }

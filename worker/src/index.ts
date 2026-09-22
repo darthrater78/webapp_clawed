@@ -134,21 +134,37 @@ async function encryptionKey(secret: string) {
   return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
-async function encryptTokens(tokens: TokenRecord, secret: string) {
+/**
+ * Records are `v2.<iv>.<cipher>`, with the KV key as AES-GCM additional data so a
+ * record copied under another owner's or account's key fails to decrypt. Legacy
+ * two-part records (no additional data) are still read and upgrade on next write.
+ */
+async function encryptTokens(tokens: TokenRecord, secret: string, tokenKey: string) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv, additionalData: encoder.encode(tokenKey) },
     await encryptionKey(secret),
     encoder.encode(JSON.stringify(tokens)),
   );
-  return `${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipher))}`;
+  return `v2.${bytesToBase64(iv)}.${bytesToBase64(new Uint8Array(cipher))}`;
 }
 
-async function decryptTokens(value: string, secret: string): Promise<TokenRecord> {
-  const [ivValue, cipherValue] = value.split(".");
-  if (!ivValue || !cipherValue) throw new Error("Invalid encrypted token record");
+async function decryptTokens(
+  value: string,
+  secret: string,
+  tokenKey: string,
+): Promise<TokenRecord> {
+  const parts = value.split(".");
+  const bound = parts.length === 3 && parts[0] === "v2";
+  const [ivValue, cipherValue] = bound ? parts.slice(1) : parts;
+  if (!ivValue || !cipherValue || (!bound && parts.length !== 2))
+    throw new Error("Invalid encrypted token record");
   const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: base64ToBytes(ivValue) },
+    {
+      name: "AES-GCM",
+      iv: base64ToBytes(ivValue),
+      ...(bound ? { additionalData: encoder.encode(tokenKey) } : {}),
+    },
     await encryptionKey(secret),
     base64ToBytes(cipherValue),
   );
@@ -205,7 +221,15 @@ async function currentTokens(
   const encrypted = await env.USAGE_KV.get(tokenKey);
   if (!encrypted)
     throw new ReauthRequired("This account's Claude credentials are missing. Enrol it again.");
-  const tokens = await decryptTokens(encrypted, secret);
+  let tokens: TokenRecord;
+  try {
+    tokens = await decryptTokens(encrypted, secret, tokenKey);
+  } catch {
+    // Wrong TOKEN_ENCRYPTION_KEY, or a record that does not belong under this key.
+    throw new ReauthRequired(
+      "This account's stored sign-in could not be read. Remove it and enrol it again.",
+    );
+  }
   if (tokens.revoked)
     throw new ReauthRequired(
       "Claude no longer accepts this account's saved sign-in. Remove it and enrol it again.",
@@ -213,11 +237,14 @@ async function currentTokens(
   if (tokens.expiresAt > Date.now() + refreshBefore) return tokens;
   try {
     const refreshed = await refreshTokens(tokens, env);
-    await env.USAGE_KV.put(tokenKey, await encryptTokens(refreshed, secret));
+    await env.USAGE_KV.put(tokenKey, await encryptTokens(refreshed, secret, tokenKey));
     return refreshed;
   } catch (error) {
     if (error instanceof ReauthRequired)
-      await env.USAGE_KV.put(tokenKey, await encryptTokens({ ...tokens, revoked: true }, secret));
+      await env.USAGE_KV.put(
+        tokenKey,
+        await encryptTokens({ ...tokens, revoked: true }, secret, tokenKey),
+      );
     throw error;
   }
 }
@@ -260,7 +287,7 @@ async function fetchUsage(env: Env, secret: string, ownerId: string, account: Ac
       Authorization: `Bearer ${tokens.accessToken}`,
       "anthropic-beta": "oauth-2025-04-20",
       "anthropic-version": "2023-06-01",
-      "User-Agent": "clawdmeter-worker/1.1",
+      "User-Agent": "clawdmeter-worker",
       "x-app": "cli",
     },
   });
@@ -328,7 +355,8 @@ async function storeAccount(
   tokens: TokenRecord,
 ) {
   const id = hex(crypto.getRandomValues(new Uint8Array(8)));
-  await env.USAGE_KV.put(`tokens:${ownerId}:${id}`, await encryptTokens(tokens, secret));
+  const tokenKey = `tokens:${ownerId}:${id}`;
+  await env.USAGE_KV.put(tokenKey, await encryptTokens(tokens, secret, tokenKey));
   await writeAccounts(env, ownerId, [...accounts, { id, label }]);
   return { account: { id, label } };
 }
