@@ -19,11 +19,13 @@ type TokenRecord = {
   revoked?: boolean;
 };
 type UsageWindow = { utilization: number; resets_at?: string | null } | null;
+type UsageBreakdownRow = { key: string; display_name: string; percent: number };
 type AnthropicUsage = {
   five_hour?: UsageWindow;
   seven_day?: UsageWindow;
-  seven_day_sonnet?: UsageWindow;
-  seven_day_opus?: UsageWindow;
+  /** Share of the 7-day window by usage surface (Claude Code, Chat, Cowork, ...) — the
+   *  API has no per-model (Sonnet/Opus) breakdown, only this. */
+  seven_day_breakdown?: { rows?: UsageBreakdownRow[] } | null;
 };
 type CachedUsage = {
   accountId: string;
@@ -36,8 +38,7 @@ type CachedUsage = {
   needsReauth?: boolean;
   fiveHour: { utilization: number; resetsAt: string | null };
   sevenDay: { utilization: number; resetsAt: string | null };
-  sevenDaySonnet: { utilization: number; resetsAt: string | null } | null;
-  sevenDayOpus: { utilization: number; resetsAt: string | null } | null;
+  sevenDayBreakdown: { key: string; label: string; percent: number }[];
 };
 type Cooldown = { until: number; error: string; needsReauth: boolean };
 
@@ -256,6 +257,17 @@ function normalizedWindow(window: UsageWindow) {
   };
 }
 
+function normalizedBreakdown(rows: UsageBreakdownRow[] | undefined) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((row) => typeof row?.key === "string" && typeof row?.percent === "number")
+    .map((row) => ({
+      key: row.key,
+      label: typeof row.display_name === "string" ? row.display_name : row.key,
+      percent: row.percent,
+    }));
+}
+
 function normalizeUsage(accountId: string, label: string, usage: AnthropicUsage): CachedUsage {
   return {
     accountId,
@@ -264,8 +276,7 @@ function normalizeUsage(accountId: string, label: string, usage: AnthropicUsage)
     stale: false,
     fiveHour: normalizedWindow(usage.five_hour ?? null),
     sevenDay: normalizedWindow(usage.seven_day ?? null),
-    sevenDaySonnet: usage.seven_day_sonnet ? normalizedWindow(usage.seven_day_sonnet) : null,
-    sevenDayOpus: usage.seven_day_opus ? normalizedWindow(usage.seven_day_opus) : null,
+    sevenDayBreakdown: normalizedBreakdown(usage.seven_day_breakdown?.rows),
   };
 }
 

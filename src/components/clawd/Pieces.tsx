@@ -1,5 +1,6 @@
 import { AlertTriangle, Minus, Plus, RotateCcw, Sparkles, Undo2 } from "lucide-react";
 
+import { Bar } from "@/components/clawd/Gauge";
 import type { Snapshot } from "@/lib/clawd/metrics";
 import { formatMinutes } from "@/lib/clawd/metrics";
 import { cn } from "@/lib/utils";
@@ -43,15 +44,15 @@ export function HistoryChart({
   showLabels = true,
 }: {
   snapshot: Snapshot;
-  height?: number;
+  height?: number | string;
   showLabels?: boolean;
 }) {
   const max = Math.max(1, ...snapshot.history.map((d) => d.used));
   const dailyTarget = snapshot.week.limit / 7;
 
   return (
-    <div className="w-full">
-      <div className="flex items-end gap-1.5" style={{ height }}>
+    <div className={cn("w-full", height === "100%" && "flex h-full min-h-0 flex-col justify-end")}>
+      <div className="flex min-h-0 flex-1 items-end gap-1.5" style={{ height }}>
         {snapshot.history.map((d, i) => {
           const h = (d.used / max) * 100;
           const hot = d.used > dailyTarget;
@@ -237,6 +238,25 @@ export function QuotaEditor({
     <div className="space-y-2">
       {row("5-hour session limit", session, "session", 5)}
       {row("Weekly limit", weekly, "weekly", 20)}
+    </div>
+  );
+}
+
+/** Live mode's stand-in for a per-model split: share of the 7-day window by usage
+ *  surface (Claude Code, Chat, Cowork, ...), which is what the API actually provides. */
+export function SourceBreakdownBars({
+  rows,
+  compact = false,
+}: {
+  rows: { key: string; label: string; percent: number }[] | undefined;
+  compact?: boolean;
+}) {
+  if (!rows || rows.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row) => (
+        <Bar key={row.key} pct={row.percent} label={row.label} compact={compact} />
+      ))}
     </div>
   );
 }

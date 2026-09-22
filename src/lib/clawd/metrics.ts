@@ -41,6 +41,9 @@ export type Snapshot = {
   week: Meter;
   sonnetPct: number;
   opusPct: number;
+  /** Live mode only: share of the 7-day window by usage surface (Claude Code, Chat, ...).
+   *  The Anthropic usage API has no per-model breakdown, only this. */
+  sourceBreakdown?: { key: string; label: string; percent: number }[];
   /** %/h over the last 30 minutes */
   burn30: number;
   /** %/h over the last 5 minutes */

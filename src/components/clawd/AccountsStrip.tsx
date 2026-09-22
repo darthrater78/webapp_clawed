@@ -1,6 +1,7 @@
 import { Columns3 } from "lucide-react";
 
-import { Bar, Gauge } from "@/components/clawd/Gauge";
+import { Gauge } from "@/components/clawd/Gauge";
+import { SourceBreakdownBars } from "@/components/clawd/Pieces";
 import type { Clawdmeter } from "@/hooks/useClawdmeter";
 import { clamp, formatClock, formatDuration } from "@/lib/clawd/metrics";
 import { cn } from "@/lib/utils";
@@ -73,8 +74,6 @@ export function AccountsStrip({
           const reading = readings[account.id];
           const session = clamp(reading?.fiveHour.utilization ?? 0);
           const week = clamp(reading?.sevenDay.utilization ?? 0);
-          const sonnet = clamp(reading?.sevenDaySonnet?.utilization ?? 0);
-          const opus = clamp(reading?.sevenDayOpus?.utilization ?? 0);
           const selected = config?.accountId === account.id;
           const five = resetBits(reading?.fiveHour.resetsAt ?? null);
           const seven = resetBits(reading?.sevenDay.resetsAt ?? null);
@@ -122,10 +121,7 @@ export function AccountsStrip({
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Bar pct={sonnet} label="Sonnet weekly" tone="sonnet" compact />
-                <Bar pct={opus} label="Opus weekly" tone="opus" compact />
-              </div>
+              <SourceBreakdownBars rows={reading?.sevenDayBreakdown} compact />
             </button>
           );
         })}

@@ -8,6 +8,7 @@ import {
   LogPad,
   QuotaEditor,
   RunwayVerdict,
+  SourceBreakdownBars,
   Stat,
 } from "@/components/clawd/Pieces";
 import type { Clawdmeter } from "@/hooks/useClawdmeter";
@@ -103,12 +104,14 @@ export function FullPageLayout({ meter }: { meter: Clawdmeter }) {
               <Stat label="Today" value={`${snapshot.totalToday} ${quotas.unit}`} />
             </div>
             <div className="mt-auto space-y-2">
-              <Bar
-                pct={snapshot.sonnetPct}
-                label={live ? "Sonnet weekly" : "Sonnet share"}
-                tone="sonnet"
-              />
-              <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus share"} tone="opus" />
+              {live ? (
+                <SourceBreakdownBars rows={snapshot.sourceBreakdown} />
+              ) : (
+                <>
+                  <Bar pct={snapshot.sonnetPct} label="Sonnet share" tone="sonnet" />
+                  <Bar pct={snapshot.opusPct} label="Opus share" tone="opus" />
+                </>
+              )}
             </div>
           </div>
         </section>
