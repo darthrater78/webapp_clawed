@@ -13,5 +13,5 @@ Updated: 2026-09-22
    lockfile, fixed by this release; re-check they close after merge.
    withdrawn: "no backend you control" — policy question, not a vulnerability
 📄 DOCS       ✅ CHANGELOG [0.1.0]; README release process; worker README
-📦 RELEASE    ✅ commits + release notes approved by user; PR being opened
-🚀 SHIP       ⏳ plan: merge PR → user tags v0.1.0 on merge commit → release.yml
+📦 RELEASE    ✅ PR #5 merged (dfc80ff); docs PR for update guide approved
+🚀 SHIP       ⏳ tag v0.1.0 on the docs PR merge commit

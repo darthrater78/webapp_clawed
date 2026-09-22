@@ -55,6 +55,39 @@ npm run status -- https://clawdmeter-usage.<you>.workers.dev   # shows what is s
 - Secrets reach Wrangler over stdin, so they never appear in shell history or process lists.
 - A value set in the Cloudflare dashboard as a plain variable is kept across redeploys (`keep_vars`). To manage it with `npm run configure` instead, delete it from the dashboard first.
 
+## Updating an existing Worker
+
+Updating replaces only the code. Your KV storage, secrets (`APP_SHARED_KEY`, `TOKEN_ENCRYPTION_KEY`), enrolled accounts, and an `ALLOWED_ORIGIN` set in the Cloudflare dashboard all carry over.
+
+1. **Get the new code.** Run `git pull` in your clone, or download the release's **Source code (zip)** from GitHub and use its `worker/` folder.
+2. **Check the Worker name.** `"name"` in `wrangler.jsonc` must match the deployed Worker (`clawdmeter-usage` by default). If it doesn't, deploy creates a second Worker instead of updating yours.
+3. **Sign in to Cloudflare** the same way as for the first deploy (`CLOUDFLARE_API_TOKEN`, or `npx wrangler login`).
+4. **Deploy:**
+
+   ```sh
+   cd worker
+   npm ci
+   npm run deploy
+   ```
+
+   This finds your existing `USAGE_KV` namespace by name. If yours has a different title, first replace `REPLACE_WITH_KV_NAMESPACE_ID` in `wrangler.jsonc` with its ID (`npx wrangler kv namespace list` shows it).
+
+5. **Check it:** `npm run status -- https://clawdmeter-usage.<your-subdomain>.workers.dev` should print `✔ Worker is fully configured`. If it lists anything missing, run `npm run configure`. It never replaces keys that already exist.
+6. **Watch the first refresh:** `npm run tail`. Within 30 minutes the cron logs `token refresh: N accounts checked, 0 need attention`.
+7. **Tidy up:** deploy writes your KV namespace ID into `wrangler.jsonc`. It isn't needed in the repo because the next deploy looks it up again, so discard the change with `git restore worker/wrangler.jsonc`.
+
+Also update the static app to the same version. Older app builds can still read usage, but they offer the credential-paste option, which the Worker no longer accepts.
+
+### Updating from a Worker older than v0.1.0
+
+- **"Stale" accounts recover on their own** at the next cron run (at most 30 minutes), or straight away with **Refresh now**. Older Workers never managed to refresh, so the saved refresh token is still valid unless something else has used it.
+- **An account marked "Re-enrol" needs signing in again:** remove it and add it back with **Open Claude sign-in**. This usually happens to accounts that were added by pasting a credentials file from a machine where Claude Code has since refreshed them.
+- **The app asks for the app key again after each reload.** The key is no longer saved in the browser.
+
+### Rolling back
+
+`npx wrangler rollback --config wrangler.jsonc` returns to the previous deployed version without touching secrets or storage. **Only roll back before the first token refresh.** From v0.1.0, refreshed tokens are stored in a format older Workers cannot read, so after a rollback those accounts have to be enrolled again.
+
 ## Keeping tokens fresh
 
 A cron trigger runs every 30 minutes and refreshes any account whose Claude access token expires within two hours, so requests never have to refresh tokens themselves. If Claude rejects an account's refresh token, the account is marked **Re-enrol** in the app and no further refreshes are attempted for it. Remove it and enrol it again.
