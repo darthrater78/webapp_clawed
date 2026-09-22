@@ -18,7 +18,7 @@ export function FullPageLayout({ meter }: { meter: Clawdmeter }) {
   const live = source === "worker";
 
   return (
-    <main className="clawd-bg min-h-full w-full px-4 py-6 sm:px-6 sm:py-10">
+    <main data-page-root className="clawd-bg min-h-full w-full px-4 py-6 sm:px-6 sm:py-10">
       <div className="clawd-bg-glow" aria-hidden />
       <div className="relative mx-auto w-full max-w-6xl">
         <header className="sticky top-0 z-30 -mx-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur sm:mx-0 sm:flex sm:justify-between sm:px-4 sm:py-3">

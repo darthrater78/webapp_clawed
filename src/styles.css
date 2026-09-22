@@ -1,6 +1,19 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+/* Fonts are bundled into the build: nothing is fetched from a third party at runtime. */
+@import "@fontsource/space-grotesk/latin-400.css";
+@import "@fontsource/space-grotesk/latin-ext-400.css";
+@import "@fontsource/space-grotesk/latin-600.css";
+@import "@fontsource/space-grotesk/latin-ext-600.css";
+@import "@fontsource/space-grotesk/latin-700.css";
+@import "@fontsource/space-grotesk/latin-ext-700.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-ext-400.css";
+@import "@fontsource/jetbrains-mono/latin-600.css";
+@import "@fontsource/jetbrains-mono/latin-ext-600.css";
+@import "@fontsource/jetbrains-mono/latin-700.css";
+@import "@fontsource/jetbrains-mono/latin-ext-700.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -89,17 +102,18 @@
     height: 100%;
   }
 
+  /* Transparent by default so nothing is painted outside a widget card, even
+     before the app renders. Full-page and side-panel roots opt in below. */
   body {
     margin: 0;
-    background-color: var(--color-background);
+    background: transparent;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
 
-  /* The widget root IS the card: nothing wraps it. */
-  body:has([data-widget-root]) {
-    background: transparent;
+  body:has([data-page-root]) {
+    background-color: var(--color-background);
   }
 }
 

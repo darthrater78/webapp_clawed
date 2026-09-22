@@ -43,7 +43,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Same script a developer runs locally. --verify unpacks the source zip into
+      # Same script a developer runs locally. --verify unpacks the upload zip into
       # an empty folder and proves `npm ci && npm run build` works from it alone.
       - name: Package release artifacts
         run: npm run package -- --verify

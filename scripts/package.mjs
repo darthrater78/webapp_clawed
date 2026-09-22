@@ -1,14 +1,16 @@
 /**
  * Builds the release artifacts for the current commit into release/:
  *
- *   clawdmeter-v<version>-source.zip   what the hosting platform uploads and builds
- *                                      (`npm ci && npm run build`); `git archive` of
- *                                      HEAD, minus the export-ignore paths in .gitattributes
- *   clawdmeter-v<version>-dist.zip     the static build output (run `npm run build` first)
+ *   clawdmeter-v<version>-upload.zip       what the hosting platform uploads and builds
+ *                                          (`npm ci && npm run build`); `git archive` of
+ *                                          HEAD, minus the export-ignore paths in
+ *                                          .gitattributes
+ *   clawdmeter-v<version>-static-site.zip  the static build output (run `npm run build`
+ *                                          first)
  *   SHA256SUMS.txt
  *
  *   npm run package              build the zips
- *   npm run package -- --verify  also unpack the source zip into a clean folder and
+ *   npm run package -- --verify  also unpack the upload zip into a clean folder and
  *                                prove `npm ci && npm run build` works from it alone
  *
  * Dev-time and CI only; nothing here ships. Uses Node built-ins plus git.
@@ -104,10 +106,10 @@ function zip(entries) {
 async function sourceZip() {
   if (run("git", ["status", "--porcelain", "--untracked-files=no"]).trim()) {
     fail(
-      "Uncommitted changes to tracked files. The source zip is built from HEAD, so commit them first.",
+      "Uncommitted changes to tracked files. The upload zip is built from HEAD, so commit them first.",
     );
   }
-  const target = path.join(out, `${base}-source.zip`);
+  const target = path.join(out, `${base}-upload.zip`);
   run("git", ["archive", "--format=zip", `--output=${target}`, "HEAD"]);
   return target;
 }
@@ -120,18 +122,18 @@ async function distZip() {
   const entries = await Promise.all(
     files.map(async (file) => ({ name: file, data: await readFile(path.join(dist, file)) })),
   );
-  const target = path.join(out, `${base}-dist.zip`);
+  const target = path.join(out, `${base}-static-site.zip`);
   await writeFile(target, zip(entries));
   return target;
 }
 
-/** The platform only ever gets the source zip, so prove it builds with nothing else around it. */
+/** The platform only ever gets the upload zip, so prove it builds with nothing else around it. */
 async function verifySource(sourcePath) {
   const scratch = await mkdtemp(path.join(tmpdir(), `${base}-verify-`));
   try {
     run("unzip", ["-q", sourcePath, "-d", scratch]);
     if (existsSync(path.join(scratch, "worker")))
-      fail("The source zip contains worker/, which must ship separately.");
+      fail("The upload zip contains worker/, which must ship separately.");
     // Windows can only launch npm.cmd through a shell; the arguments here are fixed.
     const npmOptions = {
       cwd: scratch,
@@ -142,8 +144,8 @@ async function verifySource(sourcePath) {
     run("npm", ["run", "build"], npmOptions);
     const built = (await filesUnder(path.join(scratch, "dist"))).sort();
     if (!built.includes("index.html"))
-      fail("Building from the source zip produced no dist/index.html.");
-    console.log(`✔ Source zip builds on its own (${built.length} files in dist/).`);
+      fail("Building from the upload zip produced no dist/index.html.");
+    console.log(`✔ Upload zip builds on its own (${built.length} files in dist/).`);
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }

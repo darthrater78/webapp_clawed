@@ -137,7 +137,7 @@ jobs:
           fi
           (cd release && sha256sum -c SHA256SUMS.txt)
           version="${GITHUB_REF_NAME#v}"; version="${version%%-*}"
-          for kind in source dist; do
+          for kind in upload static-site; do
             test -s "release/clawdmeter-v${version}-${kind}.zip" \
               || { echo "::error::Missing clawdmeter-v${version}-${kind}.zip"; exit 1; }
           done

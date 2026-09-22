@@ -19,7 +19,10 @@ export function SidePanelLayout({ meter }: { meter: Clawdmeter }) {
   const live = source === "worker";
 
   return (
-    <div className="scroll-slim relative h-full w-full overflow-y-auto bg-background px-3 py-3">
+    <div
+      data-page-root
+      className="scroll-slim relative h-full w-full overflow-y-auto bg-background px-3 py-3"
+    >
       <header className="sticky top-0 z-30 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-border bg-card/95 px-2 py-2 shadow-md backdrop-blur">
         <div className="flex min-w-0 items-center gap-2">
           <Creature mood={snapshot.mood} level={snapshot.level} size={32} />
