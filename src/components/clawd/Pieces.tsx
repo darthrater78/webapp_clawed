@@ -43,15 +43,15 @@ export function HistoryChart({
   showLabels = true,
 }: {
   snapshot: Snapshot;
-  height?: number;
+  height?: number | string;
   showLabels?: boolean;
 }) {
   const max = Math.max(1, ...snapshot.history.map((d) => d.used));
   const dailyTarget = snapshot.week.limit / 7;
 
   return (
-    <div className="w-full">
-      <div className="flex items-end gap-1.5" style={{ height }}>
+    <div className={cn("w-full", height === "100%" && "flex h-full min-h-0 flex-col justify-end")}>
+      <div className="flex min-h-0 flex-1 items-end gap-1.5" style={{ height }}>
         {snapshot.history.map((d, i) => {
           const h = (d.used / max) * 100;
           const hot = d.used > dailyTarget;

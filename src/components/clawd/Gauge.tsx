@@ -82,7 +82,7 @@ export function Gauge({
         </div>
       </div>
       {showReset ? (
-        <div className="max-w-full text-center leading-tight">
+        <div className="max-w-full space-y-0.5 text-center leading-tight">
           {resetIn && resetIn !== "—" ? (
             <p className="numerals text-[0.62rem] font-semibold text-foreground">{resetIn} left</p>
           ) : null}

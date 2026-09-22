@@ -303,53 +303,54 @@ export function WidgetExpanded({ meter }: { meter: Clawdmeter }) {
 
   return (
     <div data-widget-root style={ROOT_STYLE} className={cn(CARD, "flex-row")}>
-      <aside className="flex w-[38%] min-w-0 flex-col gap-2 border-r border-border bg-surface p-3">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Creature mood={snapshot.mood} level={snapshot.level} size={40} />
-            <div className="min-w-0">
-              <div className="truncate text-xs font-bold uppercase tracking-widest">Clawdmeter</div>
-              <div className="flex min-w-0 items-center gap-1">
-                <AccountLabel meter={meter} className="text-[0.6rem] text-muted-foreground" />
-                <SourceBadge meter={meter} compact />
-              </div>
+      <aside className="flex w-[38%] min-w-0 flex-col gap-3 border-r border-border bg-surface p-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Creature mood={snapshot.mood} level={snapshot.level} size={40} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-bold uppercase tracking-widest">Clawdmeter</div>
+            <div className="flex min-w-0 items-center gap-1">
+              <AccountLabel
+                meter={meter}
+                className="min-w-0 flex-1 text-[0.6rem] text-muted-foreground"
+              />
+              <SourceBadge meter={meter} compact />
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <AccountsCompareToggle meter={meter} compact />
-            <WorkerSetupButton meter={meter} compact />
-          </div>
         </div>
-        <div className="flex items-start justify-center gap-3">
-          <Gauge
-            pct={snapshot.session.pct}
-            label="5-hour"
-            size={112}
-            thickness={9}
-            resetIn={formatDuration(snapshot.session.resetInMs)}
-            resetAt={formatClock(snapshot.session.resetAt)}
-          />
-          <Gauge
-            pct={snapshot.week.pct}
-            label="Week"
-            size={112}
-            thickness={9}
-            resetIn={formatDuration(snapshot.week.resetInMs)}
-            resetAt={formatClock(snapshot.week.resetAt)}
-          />
+        <div className="flex shrink-0 items-center gap-1">
+          <AccountsCompareToggle meter={meter} compact />
+          <WorkerSetupButton meter={meter} compact />
         </div>
-        <AlertStrip snapshot={snapshot} compact />
-        <div className="mt-auto">
-          {live ? null : (
-            <LogPad
-              onLog={logUsage}
-              onUndo={undoLast}
-              onReset={resetAll}
-              unit={quotas.unit}
-              compact
+        <div className="flex min-h-0 flex-1 flex-col justify-center gap-3">
+          <div className="flex items-start justify-center gap-3">
+            <Gauge
+              pct={snapshot.session.pct}
+              label="5-hour"
+              size={112}
+              thickness={9}
+              resetIn={formatDuration(snapshot.session.resetInMs)}
+              resetAt={formatClock(snapshot.session.resetAt)}
             />
-          )}
+            <Gauge
+              pct={snapshot.week.pct}
+              label="Week"
+              size={112}
+              thickness={9}
+              resetIn={formatDuration(snapshot.week.resetInMs)}
+              resetAt={formatClock(snapshot.week.resetAt)}
+            />
+          </div>
+          <AlertStrip snapshot={snapshot} compact />
         </div>
+        {live ? null : (
+          <LogPad
+            onLog={logUsage}
+            onUndo={undoLast}
+            onReset={resetAll}
+            unit={quotas.unit}
+            compact
+          />
+        )}
       </aside>
 
       <section className="grid min-w-0 flex-1 grid-rows-[auto_auto_1fr] gap-2 p-3">
@@ -382,12 +383,12 @@ export function WidgetExpanded({ meter }: { meter: Clawdmeter }) {
             <AccountsStrip meter={meter} gaugeSize={58} minCardWidth={170} />
           </div>
         ) : (
-          <div className="flex min-h-0 flex-col rounded-xl bg-surface p-2.5">
+          <div className="flex min-h-0 flex-1 flex-col rounded-xl bg-surface p-2.5">
             <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
               {live ? "Observed weekly change" : "Last 7 days"}
             </span>
-            <div className="mt-1 min-h-0 flex-1">
-              <HistoryChart snapshot={snapshot} height={110} />
+            <div className="mt-1 flex min-h-0 flex-1 items-stretch">
+              <HistoryChart snapshot={snapshot} height="100%" />
             </div>
           </div>
         )}
