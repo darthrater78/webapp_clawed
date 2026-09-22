@@ -8,6 +8,17 @@ static output).
 
 ## [0.2.0] - 2026-09-22
 
+### Changed
+
+- The shared app key now survives a reload: it is encrypted with a
+  non-extractable, per-browser Web Crypto key (kept in IndexedDB) before
+  being saved, so it only needs entering once per browser instead of after
+  every reload. An older browser's plaintext-stored key is upgraded to this
+  format the next time it loads. This protects the key against being read
+  straight from storage on disk; it does not protect against a script
+  already executing on the page, which is inherent to any client-side
+  secret the app itself needs to read.
+
 ### Added
 
 - `npm run configure` in a terminal is now a guided setup for the app origin,

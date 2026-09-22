@@ -370,9 +370,10 @@ export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
             <CloudCog className="size-3" /> Unlock
           </button>
           <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
-            Why again? The app key is kept only in this page&apos;s memory and is never saved in the
-            browser, so no other script running here can read it later. Reloading the page clears
-            it. Your enrolled accounts stay on the Worker and come back as soon as you unlock.
+            Why again? This browser doesn&apos;t have the app key saved yet (or its encrypted copy
+            couldn&apos;t be read back). Unlocking once here saves it, encrypted, so you won&apos;t
+            need to re-enter it on this device again. Your enrolled accounts stay on the Worker and
+            come back as soon as you unlock.
           </p>
           <button
             type="button"
@@ -519,9 +520,9 @@ export function WorkerPanel({ meter }: { meter: Clawdmeter }) {
             <CloudCog className="size-3" /> Connect
           </button>
           <p className="text-[0.65rem] leading-relaxed text-muted-foreground">
-            Use the app key from whoever deployed the Worker. It is kept in memory only and never
-            saved in this browser, so you will enter it again after each reload. Next you will add
-            your own Claude account.
+            Use the app key from whoever deployed the Worker. It is saved encrypted in this browser,
+            under a key that never leaves it, so you shouldn&apos;t need to enter it again on this
+            device. Next you will add your own Claude account.
           </p>
           <AppOriginField />
         </form>
