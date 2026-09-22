@@ -9,8 +9,13 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
+    // Prerendered at build time to static HTML; no server entry, server
+    // functions, or runtime ships (scripts/static-output.mjs drops the
+    // server build). Not `spa: { enabled: true }`: that mode hydrates the
+    // prerendered shell at the exact route it was built for and throws
+    // React #418 there — an open TanStack Router bug (#8473) at our
+    // versions, with no workaround for the single-route case.
     tanstackStart({
-      server: { entry: "server" },
       pages: [{ path: "/" }],
       prerender: { enabled: true, autoStaticPathsDiscovery: false },
     }),

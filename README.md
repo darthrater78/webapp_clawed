@@ -17,9 +17,11 @@ The deployable browser files are written to `dist/`. No app server ships in that
 
 Claude credentials and usage requests go through a Cloudflare Worker in [`worker/`](worker/README.md), deployed separately from the static app. Each person connects with the Worker URL and shared app key, then adds their own Claude account with **Sign in with Claude** (OAuth). The Worker encrypts the resulting tokens and scopes them to that browser.
 
+**Known exception:** this Worker is a backend the operator controls, which the widget's "no backend you control, SDK-only host communication" rule otherwise forbids. It exists because the widget SDK has no way to run OAuth, refresh Claude tokens, or fetch usage on its own (`getToken` doesn't cover any of that). This is an accepted, deliberate exception, not an oversight — everything else in this app follows the static SPA and SDK-only rules.
+
 ## Deploy the usage Worker
 
-The Worker is its own npm package and is **not** in the app's source zip. Get it from a clone of this repo, or from the **Source code (zip)** that GitHub attaches to every release.
+The Worker is its own npm package and is **not** in the app's upload zip. Get it from a clone of this repo, or from the **Source code (zip)** that GitHub attaches to every release.
 
 ### What you need
 
@@ -53,15 +55,13 @@ This finds or creates the `USAGE_KV` storage, deploys the Worker with its 30-min
 
 ### 2. Configure (now or later)
 
-Run these from `worker/` whenever the values are known, in any order. There is no need to redeploy.
+From `worker/`, whenever the values are known, and with no redeploy needed:
 
 ```sh
-npm run configure                                         # creates the app key and encryption key if missing
-npm run configure -- --origin https://<your-app-origin>   # the static app's address; comma-separate several
+npm run configure
 ```
 
-- **Save the app key when it is printed.** It is shown only once, and every Clawdmeter user needs it.
-- Keys that already exist are never overwritten, so rerunning is safe. See the [Worker README](worker/README.md#configure-any-time-after-deploy) for rotation.
+This guided setup covers the app's origin (CORS), the shared **app key**, and the private **encryption key**. For each key you can keep the current one, generate a new one, or enter your own. It's the same command for a brand-new Worker, for one that has none of these values yet, and for changing them later. Generated keys are printed once: hand out the app key, and store the encryption key privately. Options for running it without prompts, and what happens to enrolled accounts when a key changes, are in the [Worker README](worker/README.md#configure-any-time-after-deploy).
 
 ### 3. Check it
 
@@ -73,7 +73,7 @@ It prints `✔ Worker is fully configured`, or lists what is still missing.
 
 ### 4. Connect the app
 
-In Clawdmeter, open setup (the sliders icon), enter the Worker URL and app key, press **Connect**, then **Open Claude sign-in** to add your Claude account. The app key is held in memory only, so after a page reload the badge shows **Locked** until you enter it again.
+In Clawdmeter, open setup (the sliders icon), enter the Worker URL and app key, press **Connect**, then **Open Claude sign-in** to add your Claude account. The app key is saved encrypted in the browser, so this is normally only needed once per browser; if it's ever missing (storage cleared, a new browser) the badge shows **Locked** until you enter it again.
 
 ### Updating an existing Worker
 
@@ -84,10 +84,12 @@ Troubleshooting, the API, and security notes are in the [Worker README](worker/R
 ## Development checks
 
 ```sh
-npm run lint        # ESLint + Prettier
+npm run lint            # ESLint + Prettier
 npm run typecheck
 npm run build
-npm run package     # release zips into release/ (commit first; see below)
+npm run verify:release  # headless-browser check: every layout size, no console
+                         # errors, no external requests (needs `npm run build` first)
+npm run package         # release zips into release/ (commit first; see below)
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of these on every push and pull request, plus `npm audit` and a Worker bundle check.
@@ -96,16 +98,18 @@ CI (`.github/workflows/ci.yml`) runs all of these on every push and pull request
 
 Each version is published as a GitHub release with these assets:
 
-| Asset                              | Contents                                                                                                                                                             |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `clawdmeter-v<version>-source.zip` | The app source for the hosting platform to upload and build (`npm ci && npm run build`). It excludes `worker/`, `.github/`, and editor state (see `.gitattributes`). |
-| `clawdmeter-v<version>-dist.zip`   | The built static files, ready for any static host.                                                                                                                   |
-| `SHA256SUMS.txt`                   | Checksums for both zips.                                                                                                                                             |
+| Asset                                   | Contents                                                                                                                                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clawdmeter-v<version>-upload.zip`      | **Upload this one to your hosting platform.** It's the app source the platform builds itself (`npm ci && npm run build`); excludes `worker/`, `.github/`, and editor state (see `.gitattributes`). |
+| `clawdmeter-v<version>-static-site.zip` | Pre-built static files, for a host that doesn't run a build step for you (e.g. plain S3/Pages hosting). Most platforms want the upload zip above, not this one.                                    |
+| `SHA256SUMS.txt`                        | Checksums for both zips.                                                                                                                                                                           |
+
+Each release's notes also lead with a one-line reminder of which asset to use, and the GitHub release page labels the assets themselves the same way.
 
 To release:
 
 1. On a branch, bump `version` in both `package.json` and `worker/package.json`, and add a `## [x.y.z]` section to `CHANGELOG.md`.
-2. Open a pull request. CI builds the zips and proves the source zip builds on its own.
+2. Open a pull request. CI builds the zips, runs the headless-browser compliance check against every layout size, and proves the upload zip builds on its own.
 3. Merge, then tag the merge commit: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 4. `.github/workflows/release.yml` checks that the tag is on `main`, that CI passed for that commit, and that the tag matches both versions. It then attaches the zips CI built, with release notes taken from `CHANGELOG.md`.
 

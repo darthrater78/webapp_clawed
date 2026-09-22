@@ -1,7 +1,7 @@
 import type { Level } from "@/lib/clawd/metrics";
 import { cn } from "@/lib/utils";
 
-export function levelOf(pct: number): Level {
+function levelOf(pct: number): Level {
   return pct >= 95 ? "critical" : pct >= 80 ? "warn" : "ok";
 }
 

@@ -1,10 +1,13 @@
 import { clamp, type Level, type Mood, type Snapshot, SESSION_MS, WEEK_MS } from "./metrics";
+import { seal, unseal, type SealedValue } from "./secretBox";
 
 export type WorkerConfig = {
   baseUrl: string;
   /**
-   * Held in memory only, never written to browser storage, so a script running on
-   * this origin later cannot lift it. Empty until entered in this session.
+   * Persisted encrypted (see secretBox.ts): the browser storage copy is
+   * ciphertext under a non-extractable per-browser key, never the app key
+   * itself. Empty until entered, or if decryption fails (e.g. a cleared
+   * IndexedDB left the wrapping key behind).
    */
   appKey: string;
   /** Random per-browser key. Only this browser can read the accounts it enrolled. */
@@ -36,7 +39,7 @@ export type WorkerReading = {
 
 export type WorkerStatus =
   | { state: "off" }
-  /** Worker known, but the app key has not been entered since this page loaded. */
+  /** Worker known, but no usable app key: never entered on this browser, or its encrypted copy could not be read back. */
   | { state: "locked" }
   | { state: "connecting" }
   | { state: "empty" }
@@ -69,35 +72,61 @@ export function createOwnerKey(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function loadWorkerConfig(userId: string | null): WorkerConfig | null {
+export async function loadWorkerConfig(userId: string | null): Promise<WorkerConfig | null> {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(key(userId, CONFIG_KEY));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<WorkerConfig>;
+    const parsed = JSON.parse(raw) as Partial<WorkerConfig> & { appKeySealed?: SealedValue };
     if (!parsed.baseUrl) return null;
+    let appKey = "";
+    let needsUpgrade = false;
+    if (parsed.appKeySealed) {
+      try {
+        appKey = await unseal(parsed.appKeySealed);
+      } catch {
+        // The wrapping key is gone (e.g. IndexedDB was cleared independently
+        // of localStorage) — fall back to locked rather than fail to load.
+        appKey = "";
+      }
+    } else if (typeof parsed.appKey === "string" && parsed.appKey) {
+      // Pre-encryption storage format: use it once, then re-save sealed.
+      appKey = parsed.appKey;
+      needsUpgrade = true;
+    }
     const config: WorkerConfig = {
       baseUrl: parsed.baseUrl,
-      // Older versions saved the app key; use it for this session only.
-      appKey: typeof parsed.appKey === "string" ? parsed.appKey : "",
+      appKey,
       ownerKey: parsed.ownerKey || createOwnerKey(),
       ...(typeof parsed.accountId === "string" ? { accountId: parsed.accountId } : {}),
     };
     // Keep a freshly minted owner key (or its accounts become unreachable), and
-    // scrub an app key left behind by an older version.
-    if (!parsed.ownerKey || parsed.appKey !== undefined) saveWorkerConfig(userId, config);
+    // replace a plaintext app key left behind by an older version.
+    if (!parsed.ownerKey || needsUpgrade) await saveWorkerConfig(userId, config);
     return config;
   } catch {
     return null;
   }
 }
 
-export function saveWorkerConfig(userId: string | null, config: WorkerConfig | null) {
+export async function saveWorkerConfig(
+  userId: string | null,
+  config: WorkerConfig | null,
+): Promise<void> {
   if (typeof window === "undefined") return;
   try {
     const storageKey = key(userId, CONFIG_KEY);
     if (config) {
-      const { appKey: _memoryOnly, ...persisted } = config;
+      const { appKey, ...rest } = config;
+      const persisted: Record<string, unknown> = { ...rest };
+      if (appKey) {
+        try {
+          persisted["appKeySealed"] = await seal(appKey);
+        } catch {
+          // Web Crypto/IndexedDB unavailable here — do not persist the key in
+          // the clear; it simply won't survive a reload in that browser.
+        }
+      }
       window.localStorage.setItem(storageKey, JSON.stringify(persisted));
     } else window.localStorage.removeItem(storageKey);
   } catch {

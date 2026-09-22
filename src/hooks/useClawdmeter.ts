@@ -40,14 +40,18 @@ export function useClawdmeter() {
   // a host is listening, and then re-keys the log to that user.
   useEffect(() => {
     setStore(loadStore(null));
-    setWorkerConfig(loadWorkerConfig(null));
     let alive = true;
+    void loadWorkerConfig(null).then((config) => {
+      if (alive) setWorkerConfig(config);
+    });
     void loadHostIdentity().then((identity) => {
       if (!alive) return;
       setHost(identity);
       if (identity.user?.userId) {
         setStore(loadStore(identity.user.userId));
-        setWorkerConfig(loadWorkerConfig(identity.user.userId));
+        void loadWorkerConfig(identity.user.userId).then((config) => {
+          if (alive) setWorkerConfig(config);
+        });
       }
       emit("clawdmeter_opened");
     });
@@ -72,7 +76,7 @@ export function useClawdmeter() {
     (next: WorkerConfig | null) => {
       configRef.current = next;
       setWorkerConfig(next);
-      saveWorkerConfig(userId, next);
+      void saveWorkerConfig(userId, next);
     },
     [userId],
   );
@@ -169,7 +173,7 @@ export function useClawdmeter() {
     [applyConfig],
   );
 
-  /** Re-enter the app key after a reload; it is never read back from storage. */
+  /** Unlock with the app key; saved encrypted, so this is normally only needed once per browser. */
   const unlockWorker = useCallback(
     (appKey: string) => {
       const config = configRef.current;

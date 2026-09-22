@@ -2,18 +2,24 @@
  * Deploys and configures the usage Worker on Cloudflare. Dev-time only; never shipped.
  *
  *   npm run deploy                              KV namespace + deploy, prints the URL
- *   npm run configure -- --origin https://app   origin, app key, encryption key (any subset)
+ *   npm run configure                           in a terminal: guided setup of the origin,
+ *                                               app key and encryption key (keep, generate,
+ *                                               or enter your own for each)
+ *   npm run configure -- --origin https://app   no prompts; also --app-key, --encryption-key
+ *                                               (your own value, typed hidden or piped in),
+ *                                               --rotate-app-key, --rotate-encryption-key --yes
  *   npm run status -- https://<worker-url>      which settings are still missing
  *
  * Secrets go to Wrangler over stdin, never on a command line. Existing keys are
- * kept unless a --rotate flag asks otherwise, because a new TOKEN_ENCRYPTION_KEY
- * makes every enrolled account unreadable.
+ * kept unless asked otherwise, because a new TOKEN_ENCRYPTION_KEY makes every
+ * enrolled account unreadable.
  */
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { createInterface } from "node:readline/promises";
 
 const config = path.join(import.meta.dirname, "..", "wrangler.jsonc");
 const placeholder = "REPLACE_WITH_KV_NAMESPACE_ID";
@@ -95,7 +101,7 @@ function reportHealth(url, state) {
     );
   if (state.ok) return console.log("✔ Worker is fully configured.");
   console.log(`Still to set: ${state.missing.join(", ")}`);
-  console.log("When you have them: npm run configure -- --origin https://<your-app-origin>");
+  console.log("Set them with the guided setup: npm run configure");
 }
 
 async function deploy() {
@@ -137,34 +143,180 @@ function flag(name) {
   return index === -1 ? undefined : (process.argv[index + 1] ?? "");
 }
 
-async function configure() {
-  requireLogin();
+const MIN_KEY_LENGTH = 32;
+/** Names of keys generated in this run; only these are ever printed. */
+const generated = new Set();
+const generateKey = (name) => {
+  generated.add(name);
+  return randomBytes(32).toString("hex");
+};
+
+async function ask(question) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return (await rl.question(question)).trim();
+  } finally {
+    rl.close();
+  }
+}
+
+/** Reads a value without echoing it. Piped input is read whole instead. */
+async function askHidden(question) {
+  const { stdin, stdout } = process;
+  if (!stdin.isTTY) {
+    let piped = "";
+    for await (const chunk of stdin) piped += chunk;
+    return piped.trim();
+  }
+  stdout.write(question);
+  return new Promise((resolve) => {
+    let value = "";
+    const finish = () => {
+      stdin.off("data", onData);
+      stdin.setRawMode(false);
+      stdin.pause();
+      stdout.write("\n");
+      resolve(value.trim());
+    };
+    const onData = (chunk) => {
+      for (const character of chunk) {
+        if (character === "\r" || character === "\n") return finish();
+        if (character === "\u0003") {
+          stdin.setRawMode(false);
+          stdout.write("\n");
+          process.exit(130);
+        }
+        if (character === "\u007f" || character === "\b") value = value.slice(0, -1);
+        else value += character;
+      }
+    };
+    stdin.setRawMode(true);
+    stdin.setEncoding("utf8");
+    stdin.resume();
+    stdin.on("data", onData);
+  });
+}
+
+function checkKey(name, value) {
+  if (value.length < MIN_KEY_LENGTH || /\s/.test(value)) {
+    fail(`${name} must be at least ${MIN_KEY_LENGTH} characters with no spaces.`);
+  }
+  return value;
+}
+
+async function enterKey(name) {
+  const first = await askHidden(`Enter ${name} (hidden): `);
+  checkKey(name, first);
+  if (process.stdin.isTTY && (await askHidden("Enter it again to confirm: ")) !== first) {
+    fail(`The two ${name} entries did not match. Nothing was changed.`);
+  }
+  return first;
+}
+
+function existingSecrets() {
   const listed = wrangler(["secret", "list", "--format", "json"], { quiet: true });
   if (!listed.ok)
     fail("Could not read the Worker's secrets. Deploy it first with `npm run deploy`.");
-  const existing = new Set(jsonFrom(listed.out).map((secret) => secret.name));
+  return new Set(jsonFrom(listed.out).map((secret) => secret.name));
+}
+
+/** Asks keep / generate / enter for one key; returns the new value, or undefined to keep. */
+async function chooseKey(name, isSet, { purpose, replaceWarning }) {
+  console.log(`\n${name} — ${purpose}`);
+  console.log(`  Currently: ${isSet ? "set (value hidden)" : "not set"}`);
+  const options = isSet
+    ? "[k]eep, [g]enerate new, [e]nter your own"
+    : "[g]enerate, [e]nter your own";
+  const fallback = isSet ? "k" : "g";
+  const answer = ((await ask(`  ${options} (default ${fallback}): `)) || fallback).toLowerCase()[0];
+  if (answer === "k" && isSet) return undefined;
+  if (isSet) {
+    console.log(`  ⚠ ${replaceWarning}`);
+    if ((await ask("  Type yes to replace it: ")) !== "yes") return undefined;
+  }
+  if (answer === "e") return enterKey(name);
+  if (answer === "g") return generateKey(name);
+  fail(`Unknown choice "${answer}". Nothing was changed.`);
+}
+
+async function guidedSecrets(existing) {
+  console.log(
+    "Guided setup. Values are sent to Cloudflare as Worker secrets; nothing is saved here.",
+  );
   const secrets = {};
 
+  console.log("\nALLOWED_ORIGIN — the web address(es) the Clawdmeter app is served from");
+  console.log(
+    `  Currently: ${existing.has("ALLOWED_ORIGIN") ? "set as a secret (value hidden)" : "not set as a secret (it may be a dashboard variable)"}`,
+  );
+  const origin = await ask("  New origin(s), comma-separated, or Enter to leave as is: ");
+  if (origin) secrets.ALLOWED_ORIGIN = parseOrigins(origin);
+
+  const appKey = await chooseKey("APP_SHARED_KEY", existing.has("APP_SHARED_KEY"), {
+    purpose: "the shared key everyone enters in the app to connect",
+    replaceWarning: "Everyone using Clawdmeter will need the new key to reconnect.",
+  });
+  if (appKey) secrets.APP_SHARED_KEY = appKey;
+
+  console.log(
+    "\n  To keep accounts enrolled under an earlier Worker readable, enter that Worker's TOKEN_ENCRYPTION_KEY.",
+  );
+  const encryptionKey = await chooseKey(
+    "TOKEN_ENCRYPTION_KEY",
+    existing.has("TOKEN_ENCRYPTION_KEY"),
+    {
+      purpose: "encrypts stored Claude sign-ins; never shared with users",
+      replaceWarning:
+        "Accounts enrolled under the current key become unreadable and must be enrolled again.",
+    },
+  );
+  if (encryptionKey) secrets.TOKEN_ENCRYPTION_KEY = encryptionKey;
+
+  if (!Object.keys(secrets).length) return secrets;
+  console.log(`\nWill set: ${Object.keys(secrets).join(", ")}`);
+  if ((await ask("Apply? (y/N): ")).toLowerCase() !== "y") {
+    console.log("Nothing was changed.");
+    process.exit(0);
+  }
+  return secrets;
+}
+
+async function flagSecrets(existing) {
+  const secrets = {};
   const origin = flag("--origin");
   if (origin !== undefined) secrets.ALLOWED_ORIGIN = parseOrigins(origin);
 
-  const rotateApp = process.argv.includes("--rotate-app-key");
-  if (!existing.has("APP_SHARED_KEY") || rotateApp)
-    secrets.APP_SHARED_KEY = randomBytes(32).toString("hex");
-
-  const rotateEncryption = process.argv.includes("--rotate-encryption-key");
+  const typedApp = process.argv.includes("--app-key");
+  const typedEncryption = process.argv.includes("--encryption-key");
+  if (typedApp && typedEncryption && !process.stdin.isTTY) {
+    fail("Pipe in one key at a time: use --app-key and --encryption-key in separate runs.");
+  }
+  const rotateEncryption = process.argv.includes("--rotate-encryption-key") || typedEncryption;
   if (rotateEncryption && existing.has("TOKEN_ENCRYPTION_KEY") && !process.argv.includes("--yes")) {
     fail(
-      "Rotating TOKEN_ENCRYPTION_KEY makes every enrolled account unreadable. Add --yes if that is intended.",
+      "Replacing TOKEN_ENCRYPTION_KEY makes every account enrolled under the current key unreadable. Add --yes if that is intended.",
     );
   }
-  if (!existing.has("TOKEN_ENCRYPTION_KEY") || rotateEncryption)
-    secrets.TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("hex");
+
+  if (typedApp) secrets.APP_SHARED_KEY = await enterKey("APP_SHARED_KEY");
+  else if (!existing.has("APP_SHARED_KEY") || process.argv.includes("--rotate-app-key"))
+    secrets.APP_SHARED_KEY = generateKey("APP_SHARED_KEY");
+
+  if (typedEncryption) secrets.TOKEN_ENCRYPTION_KEY = await enterKey("TOKEN_ENCRYPTION_KEY");
+  else if (!existing.has("TOKEN_ENCRYPTION_KEY") || rotateEncryption)
+    secrets.TOKEN_ENCRYPTION_KEY = generateKey("TOKEN_ENCRYPTION_KEY");
+  return secrets;
+}
+
+async function configure() {
+  requireLogin();
+  const existing = existingSecrets();
+  const flagged = process.argv.slice(3).some((arg) => arg.startsWith("--"));
+  const guided = !flagged && process.stdin.isTTY && process.stdout.isTTY;
+  const secrets = guided ? await guidedSecrets(existing) : await flagSecrets(existing);
 
   if (!Object.keys(secrets).length) {
-    console.log(
-      "Nothing to change: APP_SHARED_KEY and TOKEN_ENCRYPTION_KEY are already set. Pass --origin to set the app origin.",
-    );
+    console.log("Nothing to change.");
     return;
   }
   const result = wrangler(["secret", "bulk"], { input: JSON.stringify(secrets), quiet: true });
@@ -177,9 +329,20 @@ async function configure() {
     );
   }
   console.log(`✔ Set ${Object.keys(secrets).join(", ")}.`);
-  if (secrets.APP_SHARED_KEY) {
+  // Show generated keys once; Cloudflare never reveals secrets again. Keys the user
+  // typed in are never echoed.
+  if (generated.has("APP_SHARED_KEY")) {
     console.log("\nApp key — give this to people using Clawdmeter. It is shown only now:\n");
     console.log(`  ${secrets.APP_SHARED_KEY}\n`);
+  }
+  if (generated.has("TOKEN_ENCRYPTION_KEY")) {
+    console.log(
+      "\nEncryption key — PRIVATE, never share it. Store it in a password manager: re-entering it",
+    );
+    console.log(
+      "is the only way to keep enrolled accounts readable if the Worker is ever rebuilt. Shown only now:\n",
+    );
+    console.log(`  ${secrets.TOKEN_ENCRYPTION_KEY}\n`);
   }
 }
 

@@ -19,7 +19,19 @@ updates:
     # Matches bunfig.toml's 24h supply-chain guard: skip versions under a day old.
     cooldown:
       default-days: 1
+    ignore:
+      # Type definitions track the Node runtime the app targets (22.x), not the newest Node.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
+      # ESLint and its plugins share peer ranges, so their majors must move together.
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-*"
+          - "typescript-eslint"
+          - "globals"
       minor-and-patch:
         update-types:
           - "minor"
