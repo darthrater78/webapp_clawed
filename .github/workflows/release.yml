@@ -179,7 +179,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          expected=$(cd release && ls | sort)
+          expected=$(find release -maxdepth 1 -type f -printf '%f\n' | sort)
           attached=$(gh release view "$GITHUB_REF_NAME" -R "$REPO" --json assets --jq '.assets[].name' | sort)
           if [ "$expected" != "$attached" ]; then
             echo "::error::Release assets do not match what was built."
