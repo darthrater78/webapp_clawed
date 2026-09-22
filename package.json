@@ -15,6 +15,7 @@
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && vite build && node scripts/static-output.mjs",
     "typecheck": "tsc --noEmit -p .",
     "package": "node scripts/package.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",

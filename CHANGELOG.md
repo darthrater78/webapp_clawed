@@ -33,6 +33,15 @@ static output).
   instead of loaded from Google Fonts, so the page makes no requests to a host
   outside the SDK. Their SIL Open Font License notices are in
   `THIRD_PARTY_NOTICES.md`, included in both release zips.
+- `npm run verify:release` (`scripts/verify-release.mjs`) loads the built app
+  in headless Chromium at every layout size it supports, served the way a
+  static host serves an SPA, and fails on any uncaught console error, any
+  request to an external origin, or a page that renders nothing. Runs in CI
+  on every push and PR (`ci.yml`), after `npm run build`. This is what caught
+  the SPA-mode hydration crash above during development; it would have failed
+  the build instead of shipping it. A known, low-severity, pre-existing
+  hydration warning on a directly-loaded unmatched path (not a real route the
+  app has) is logged, not failed — see the script for detail.
 
 ### Removed
 

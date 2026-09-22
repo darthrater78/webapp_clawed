@@ -150,11 +150,18 @@ jobs:
             $0 ~ "^## \\[" v "\\]" { flag = 1; next }
             flag && /^## \[/ { exit }
             flag { print }
-          ' CHANGELOG.md > release-notes.md
-          if [ ! -s release-notes.md ]; then
+          ' CHANGELOG.md > changelog-section.md
+          if [ ! -s changelog-section.md ]; then
             echo "::error::CHANGELOG.md has no section for ${version}."
             exit 1
           fi
+          {
+            echo "**Deploying?** Upload \`clawdmeter-v${version}-upload.zip\` to your hosting"
+            echo "platform — it's the app source for the platform to build. The static-site zip"
+            echo "is only for a host that doesn't build for you."
+            echo
+            cat changelog-section.md
+          } > release-notes.md
 
       - name: Create GitHub release
         env:
@@ -162,11 +169,15 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"; version="${version%%-*}"
           prerelease_flag=""
           case "$GITHUB_REF_NAME" in
             *-dev.*|*-alpha.*|*-beta.*|*-rc.*) prerelease_flag="--prerelease" ;;
           esac
-          gh release create "$GITHUB_REF_NAME" release/* \
+          gh release create "$GITHUB_REF_NAME" \
+            "release/clawdmeter-v${version}-upload.zip#⬆️ Upload this to your hosting platform" \
+            "release/clawdmeter-v${version}-static-site.zip#Static files (for a host that doesn't build for you)" \
+            "release/SHA256SUMS.txt#Checksums" \
             -R "$REPO" \
             --title "$GITHUB_REF_NAME" \
             --notes-file release-notes.md \

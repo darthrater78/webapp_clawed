@@ -73,7 +73,7 @@ It prints `✔ Worker is fully configured`, or lists what is still missing.
 
 ### 4. Connect the app
 
-In Clawdmeter, open setup (the sliders icon), enter the Worker URL and app key, press **Connect**, then **Open Claude sign-in** to add your Claude account. The app key is held in memory only, so after a page reload the badge shows **Locked** until you enter it again.
+In Clawdmeter, open setup (the sliders icon), enter the Worker URL and app key, press **Connect**, then **Open Claude sign-in** to add your Claude account. The app key is saved encrypted in the browser, so this is normally only needed once per browser; if it's ever missing (storage cleared, a new browser) the badge shows **Locked** until you enter it again.
 
 ### Updating an existing Worker
 
@@ -84,10 +84,12 @@ Troubleshooting, the API, and security notes are in the [Worker README](worker/R
 ## Development checks
 
 ```sh
-npm run lint        # ESLint + Prettier
+npm run lint            # ESLint + Prettier
 npm run typecheck
 npm run build
-npm run package     # release zips into release/ (commit first; see below)
+npm run verify:release  # headless-browser check: every layout size, no console
+                         # errors, no external requests (needs `npm run build` first)
+npm run package         # release zips into release/ (commit first; see below)
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of these on every push and pull request, plus `npm audit` and a Worker bundle check.
@@ -96,16 +98,18 @@ CI (`.github/workflows/ci.yml`) runs all of these on every push and pull request
 
 Each version is published as a GitHub release with these assets:
 
-| Asset                                   | Contents                                                                                                                                                             |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `clawdmeter-v<version>-upload.zip`      | The app source for the hosting platform to upload and build (`npm ci && npm run build`). It excludes `worker/`, `.github/`, and editor state (see `.gitattributes`). |
-| `clawdmeter-v<version>-static-site.zip` | The built static files, ready for any static host.                                                                                                                   |
-| `SHA256SUMS.txt`                        | Checksums for both zips.                                                                                                                                             |
+| Asset                                   | Contents                                                                                                                                                                                           |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clawdmeter-v<version>-upload.zip`      | **Upload this one to your hosting platform.** It's the app source the platform builds itself (`npm ci && npm run build`); excludes `worker/`, `.github/`, and editor state (see `.gitattributes`). |
+| `clawdmeter-v<version>-static-site.zip` | Pre-built static files, for a host that doesn't run a build step for you (e.g. plain S3/Pages hosting). Most platforms want the upload zip above, not this one.                                    |
+| `SHA256SUMS.txt`                        | Checksums for both zips.                                                                                                                                                                           |
+
+Each release's notes also lead with a one-line reminder of which asset to use, and the GitHub release page labels the assets themselves the same way.
 
 To release:
 
 1. On a branch, bump `version` in both `package.json` and `worker/package.json`, and add a `## [x.y.z]` section to `CHANGELOG.md`.
-2. Open a pull request. CI builds the zips and proves the upload zip builds on its own.
+2. Open a pull request. CI builds the zips, runs the headless-browser compliance check against every layout size, and proves the upload zip builds on its own.
 3. Merge, then tag the merge commit: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 4. `.github/workflows/release.yml` checks that the tag is on `main`, that CI passed for that commit, and that the tag matches both versions. It then attaches the zips CI built, with release notes taken from `CHANGELOG.md`.
 

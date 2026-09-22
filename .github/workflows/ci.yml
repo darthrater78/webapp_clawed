@@ -43,6 +43,25 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Loads the built dist/ in headless Chromium at every layout size the
+      # app supports, served the way a static host serves an SPA. Fails on any
+      # uncaught console error, any request to an external origin, or a page
+      # that renders nothing -- see scripts/verify-release.mjs.
+      - name: Verify release compliance
+        run: npm run verify:release
+
+      - name: Upload compliance-check screenshots
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verify-screenshots-${{ github.sha }}
+          path: verify-screenshots/
+          if-no-files-found: ignore
+          retention-days: 14
+
       # Same script a developer runs locally. --verify unpacks the upload zip into
       # an empty folder and proves `npm ci && npm run build` works from it alone.
       - name: Package release artifacts
