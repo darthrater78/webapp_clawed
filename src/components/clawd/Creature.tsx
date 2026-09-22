@@ -44,7 +44,9 @@ export function Creature({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const groupRef = useRef<ClawdGroup>(groupOf[mood]);
-  groupRef.current = groupOf[mood];
+  useEffect(() => {
+    groupRef.current = groupOf[mood];
+  }, [mood]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
