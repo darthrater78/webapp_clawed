@@ -33,8 +33,9 @@ export type WorkerReading = {
   needsReauth?: boolean;
   fiveHour: UsageWindow;
   sevenDay: UsageWindow;
-  sevenDaySonnet: UsageWindow | null;
-  sevenDayOpus: UsageWindow | null;
+  /** Share of the 7-day window by usage surface (Claude Code, Chat, Cowork, ...) — the
+   *  API has no per-model breakdown, only this. */
+  sevenDayBreakdown: { key: string; label: string; percent: number }[];
 };
 
 export type WorkerStatus =
@@ -365,9 +366,6 @@ export function buildWorkerSnapshot(
   const worst = Math.max(sessionPct, weekPct);
   const level: Level = worst >= 95 ? "critical" : worst >= 80 ? "warn" : "ok";
   const mood: Mood = worst < 5 ? "idle" : worst < 50 ? "calm" : worst < 80 ? "busy" : "heavy";
-  const sonnet = reading.sevenDaySonnet?.utilization ?? 0;
-  const opus = reading.sevenDayOpus?.utilization ?? 0;
-  const modelTotal = sonnet + opus;
 
   return {
     now,
@@ -385,8 +383,9 @@ export function buildWorkerSnapshot(
       resetAt: weekResetAt,
       resetInMs: resetIn(weekResetAt, WEEK_MS),
     },
-    sonnetPct: clamp(sonnet),
-    opusPct: clamp(opus),
+    sonnetPct: 0,
+    opusPct: 0,
+    sourceBreakdown: reading.sevenDayBreakdown,
     burn30: 0,
     burn5: 0,
     timeToLimitMin: null,

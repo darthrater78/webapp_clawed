@@ -8,6 +8,7 @@ import {
   LogPad,
   QuotaEditor,
   RunwayVerdict,
+  SourceBreakdownBars,
   Stat,
 } from "@/components/clawd/Pieces";
 import type { Clawdmeter } from "@/hooks/useClawdmeter";
@@ -75,12 +76,14 @@ export function SidePanelLayout({ meter }: { meter: Clawdmeter }) {
             label="Weekly quota"
             right={`${snapshot.week.used}/${quotas.weekly}`}
           />
-          <Bar
-            pct={snapshot.sonnetPct}
-            label={live ? "Sonnet weekly" : "Sonnet share"}
-            tone="sonnet"
-          />
-          <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus share"} tone="opus" />
+          {live ? (
+            <SourceBreakdownBars rows={snapshot.sourceBreakdown} />
+          ) : (
+            <>
+              <Bar pct={snapshot.sonnetPct} label="Sonnet share" tone="sonnet" />
+              <Bar pct={snapshot.opusPct} label="Opus share" tone="opus" />
+            </>
+          )}
         </section>
 
         <section className="space-y-2 rounded-xl border border-border bg-card p-3">

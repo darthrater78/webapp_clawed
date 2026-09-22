@@ -42,6 +42,9 @@ export function Gauge({
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
   const dash = (Math.min(100, pct) / 100) * c;
+  // Scale the number off the ring-clear inner diameter, not the outer size — otherwise
+  // a proportionally thick ring on a small gauge crowds "100%" right up against it.
+  const innerDiameter = size - thickness * 2;
 
   const showReset = Boolean((resetIn && resetIn !== "—") || (resetAt && resetAt !== "—"));
 
@@ -71,7 +74,7 @@ export function Gauge({
         <div className="absolute inset-0 grid place-content-center text-center">
           <span
             className={cn("numerals font-bold leading-none", text[level])}
-            style={{ fontSize: size * 0.26 }}
+            style={{ fontSize: innerDiameter * 0.32 }}
           >
             {Math.round(pct)}%
           </span>

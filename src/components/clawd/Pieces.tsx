@@ -1,5 +1,6 @@
 import { AlertTriangle, Minus, Plus, RotateCcw, Sparkles, Undo2 } from "lucide-react";
 
+import { Bar } from "@/components/clawd/Gauge";
 import type { Snapshot } from "@/lib/clawd/metrics";
 import { formatMinutes } from "@/lib/clawd/metrics";
 import { cn } from "@/lib/utils";
@@ -237,6 +238,25 @@ export function QuotaEditor({
     <div className="space-y-2">
       {row("5-hour session limit", session, "session", 5)}
       {row("Weekly limit", weekly, "weekly", 20)}
+    </div>
+  );
+}
+
+/** Live mode's stand-in for a per-model split: share of the 7-day window by usage
+ *  surface (Claude Code, Chat, Cowork, ...), which is what the API actually provides. */
+export function SourceBreakdownBars({
+  rows,
+  compact = false,
+}: {
+  rows: { key: string; label: string; percent: number }[] | undefined;
+  compact?: boolean;
+}) {
+  if (!rows || rows.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row) => (
+        <Bar key={row.key} pct={row.percent} label={row.label} compact={compact} />
+      ))}
     </div>
   );
 }

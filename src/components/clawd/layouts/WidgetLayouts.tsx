@@ -10,7 +10,14 @@ import {
   WorkerPanel,
   WorkerSetupButton,
 } from "@/components/clawd/WorkerPanel";
-import { AlertStrip, HistoryChart, LogPad, RunwayVerdict, Stat } from "@/components/clawd/Pieces";
+import {
+  AlertStrip,
+  HistoryChart,
+  LogPad,
+  RunwayVerdict,
+  SourceBreakdownBars,
+  Stat,
+} from "@/components/clawd/Pieces";
 import type { Clawdmeter } from "@/hooks/useClawdmeter";
 import { expandToTab } from "@/lib/clawd/host";
 import { formatClock, formatDuration, formatMinutes } from "@/lib/clawd/metrics";
@@ -193,12 +200,14 @@ export function WidgetPortrait({ meter }: { meter: Clawdmeter }) {
                 value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`}
               />
             </div>
-            <Bar
-              pct={snapshot.sonnetPct}
-              label={live ? "Sonnet weekly" : "Sonnet share"}
-              tone="sonnet"
-            />
-            <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus share"} tone="opus" />
+            {live ? (
+              <SourceBreakdownBars rows={snapshot.sourceBreakdown} />
+            ) : (
+              <>
+                <Bar pct={snapshot.sonnetPct} label="Sonnet share" tone="sonnet" />
+                <Bar pct={snapshot.opusPct} label="Opus share" tone="opus" />
+              </>
+            )}
           </>
         )}
       </div>
@@ -370,12 +379,14 @@ export function WidgetExpanded({ meter }: { meter: Clawdmeter }) {
             label="Weekly quota"
             right={`${snapshot.week.used}/${quotas.weekly}`}
           />
-          <Bar
-            pct={snapshot.sonnetPct}
-            label={live ? "Sonnet weekly" : "Sonnet share"}
-            tone="sonnet"
-          />
-          <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus share"} tone="opus" />
+          {live ? (
+            <SourceBreakdownBars rows={snapshot.sourceBreakdown} />
+          ) : (
+            <>
+              <Bar pct={snapshot.sonnetPct} label="Sonnet share" tone="sonnet" />
+              <Bar pct={snapshot.opusPct} label="Opus share" tone="opus" />
+            </>
+          )}
           <RunwayVerdict snapshot={snapshot} compact unavailable={live} />
         </div>
         {meter.worker.compare ? (
@@ -476,13 +487,14 @@ export function WidgetXL({ meter }: { meter: Clawdmeter }) {
                 value={live ? "—" : `${Math.round(snapshot.projectedPct)}%`}
               />
             </div>
-            <Bar
-              pct={snapshot.sonnetPct}
-              label={live ? "Sonnet weekly" : "Sonnet"}
-              tone="sonnet"
-              compact
-            />
-            <Bar pct={snapshot.opusPct} label={live ? "Opus weekly" : "Opus"} tone="opus" compact />
+            {live ? (
+              <SourceBreakdownBars rows={snapshot.sourceBreakdown} compact />
+            ) : (
+              <>
+                <Bar pct={snapshot.sonnetPct} label="Sonnet" tone="sonnet" compact />
+                <Bar pct={snapshot.opusPct} label="Opus" tone="opus" compact />
+              </>
+            )}
             <div className="mt-auto">
               <Stat label="Pace ratio" value={live ? "—" : `${snapshot.paceRatio.toFixed(2)}x`} />
             </div>
