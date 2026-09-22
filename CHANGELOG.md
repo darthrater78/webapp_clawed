@@ -30,6 +30,10 @@ First versioned release.
   `/api/health` reports which are missing.
 - Instructions for updating an existing Worker, including what to expect when
   coming from a Worker older than v0.1.0, and rollback limits.
+- MIT license (`LICENSE`), included in both release zips.
+- Credits for ha-clawdmeter and lovelace-clawdmeter by Stefan Knaak, which
+  Clawdmeter is based on, with their MIT notices in `THIRD_PARTY_NOTICES.md`.
+  The file is included in both release zips.
 - CI build check, tag-driven release workflow with source and dist zips, workflow
   linting, and Dependabot.
 

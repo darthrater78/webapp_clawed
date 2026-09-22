@@ -4,6 +4,8 @@ This folder is its own npm package and deploys separately from the static app. I
 
 > Claude's subscription usage endpoint is undocumented and can change without notice.
 
+The usage API access and token refresh follow [ha-clawdmeter](https://github.com/corgan2222/ha-clawdmeter) by Stefan Knaak (MIT). See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
 ## How enrolment works
 
 1. An admin deploys this Worker once and hands out the app key.

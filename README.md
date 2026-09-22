@@ -2,6 +2,8 @@
 
 Static Claude five-hour and weekly usage dashboard for full-page, side-panel, and adaptive widget contexts.
 
+Based on [ha-clawdmeter](https://github.com/corgan2222/ha-clawdmeter) and [lovelace-clawdmeter](https://github.com/corgan2222/lovelace-clawdmeter) by Stefan Knaak (MIT). See [Credits](#credits).
+
 ## Static app build
 
 ```sh
@@ -110,3 +112,16 @@ To release:
 Pre-release tags such as `v0.2.0-rc.1` can be pushed from any branch and publish as GitHub pre-releases.
 
 Release notes for each version: https://github.com/darthrater78/webapp_clawed/releases
+
+## Credits
+
+Clawdmeter is based on work by **Stefan Knaak** ([@corgan2222](https://github.com/corgan2222)):
+
+- [ha-clawdmeter](https://github.com/corgan2222/ha-clawdmeter): the Home Assistant integration this app is derived from. It provided the Clawdmeter concept, Claude usage API access, and the burn-rate, time-to-limit and runway metrics.
+- [lovelace-clawdmeter](https://github.com/corgan2222/lovelace-clawdmeter): the animated Lovelace card behind the pixel-art Clawdmeter character and the card-style display.
+
+Both are MIT-licensed. Their copyright and license notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), which also ships inside every release zip.
+
+## License
+
+[MIT](LICENSE) © 2026 Nathaniel Scriven. Portions are derived from MIT-licensed work by Stefan Knaak; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
