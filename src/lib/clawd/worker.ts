@@ -154,13 +154,15 @@ async function workerJson<T>(
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
-    throw new Error("Could not reach the usage Worker. Check its address and allowed app origin.");
+    throw new Error("Could not reach the usage Worker. Check its address and allowed app origin.", {
+      cause: error,
+    });
   }
 
   if (response.status === 401) throw new Error("The shared app key was rejected.");
   if (response.status === 403) throw new Error("This app origin is not allowed by the Worker.");
   if (!response.ok) {
-    let message = "";
+    let message: string;
     try {
       const body = (await response.json()) as { error?: string };
       message = typeof body.error === "string" ? body.error : "";
@@ -308,7 +310,7 @@ export function recordWorkerPeak(
 ): DayPeaks {
   if (typeof window === "undefined") return {};
   const storageKey = key(userId, `${HISTORY_KEY}.${accountId}`);
-  let peaks: DayPeaks = {};
+  let peaks: DayPeaks;
   try {
     const raw = window.localStorage.getItem(storageKey);
     peaks = raw ? (JSON.parse(raw) as DayPeaks) : {};

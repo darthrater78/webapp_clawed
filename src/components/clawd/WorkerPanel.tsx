@@ -11,7 +11,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Clawdmeter } from "@/hooks/useClawdmeter";
 import {
@@ -160,6 +160,7 @@ function EnrollForm({ meter, onDone }: { meter: Clawdmeter; onDone: () => void }
   useEffect(() => {
     const pending = loadPendingClaudeAuth();
     if (!pending) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAuth(pending);
     if (pending.label) setLabel((current) => current || pending.label);
   }, []);
@@ -255,6 +256,7 @@ function EnrollForm({ meter, onDone }: { meter: Clawdmeter; onDone: () => void }
 /** Shows this app's own web address, which the Worker must allow. */
 function AppOriginField() {
   const [copied, setCopied] = useState<"idle" | "done" | "manual">("idle");
+  const fieldRef = useRef<HTMLInputElement | null>(null);
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   if (!origin) return null;
 
@@ -262,7 +264,7 @@ function AppOriginField() {
     if (!element) return;
     element.focus();
     element.select();
-    let ok = false;
+    let ok: boolean;
     try {
       ok = document.execCommand("copy");
     } catch {
@@ -278,7 +280,6 @@ function AppOriginField() {
       .catch(() => setCopied("manual"));
   };
 
-  let field: HTMLInputElement | null = null;
   return (
     <div className="space-y-1 rounded-lg border border-border bg-surface px-2.5 py-2">
       <span className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -286,15 +287,17 @@ function AppOriginField() {
       </span>
       <div className="flex gap-1.5">
         <input
-          ref={(element) => {
-            field = element;
-          }}
+          ref={fieldRef}
           className={cn(input, "font-mono text-[0.65rem]")}
           value={origin}
           readOnly
           onFocus={(event) => event.currentTarget.select()}
         />
-        <button type="button" className={cn(button, "shrink-0")} onClick={() => copy(field)}>
+        <button
+          type="button"
+          className={cn(button, "shrink-0")}
+          onClick={() => copy(fieldRef.current)}
+        >
           Copy
         </button>
       </div>

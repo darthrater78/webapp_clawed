@@ -39,6 +39,10 @@ export function useClawdmeter() {
   // The log is available straight away; host identity arrives when (and if)
   // a host is listening, and then re-keys the log to that user.
   useEffect(() => {
+    // `store` must stay null through the first paint to match the server-rendered
+    // (window-less) output, then flip to a real Store once mounted; `ready` below depends
+    // on exactly that null -> non-null transition, so this can't be a lazy useState initializer.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStore(loadStore(null));
     let alive = true;
     void loadWorkerConfig(null).then((config) => {
@@ -70,7 +74,9 @@ export function useClawdmeter() {
   /* ---------------------------------------------------------- usage Worker */
 
   const configRef = useRef<WorkerConfig | null>(null);
-  configRef.current = workerConfig;
+  useEffect(() => {
+    configRef.current = workerConfig;
+  }, [workerConfig]);
 
   const applyConfig = useCallback(
     (next: WorkerConfig | null) => {
@@ -146,6 +152,10 @@ export function useClawdmeter() {
 
   useEffect(() => {
     if (!workerConfig) {
+      // Part of this effect's job of tearing the poll down when the config goes away, not a
+      // derivable value; the abort/interval cleanup below lives in this same effect for the
+      // same reason.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWorkerStatus({ state: "off" });
       setWorkerReading(null);
       setWorkerReadings({});
