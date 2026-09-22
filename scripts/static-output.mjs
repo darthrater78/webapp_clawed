@@ -60,6 +60,12 @@ if (!(await exists(index))) {
   process.exit(1);
 }
 
+// MIT notices travel with the built files: this project's license and those of
+// the projects it is based on.
+for (const notice of ["LICENSE", "THIRD_PARTY_NOTICES.md"]) {
+  await copyFile(path.join(root, notice), path.join(out, notice));
+}
+
 // Single-route SPA: any unknown path should still boot the app.
 await copyFile(index, path.join(out, "404.html"));
 

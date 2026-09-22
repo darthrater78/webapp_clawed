@@ -1,6 +1,7 @@
 {
   "name": "clawdmeter",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "repository": {
     "type": "git",
