@@ -6,6 +6,33 @@ All notable changes to Clawdmeter are recorded here. The format follows
 upload zip (what the hosting platform builds) and a static-site zip (the
 static output).
 
+## [0.2.1] - 2026-09-22
+
+### Fixed
+
+- The widget-expanded layout (the 720x510-and-larger embedded widget) crowded the
+  account-name dropdown against the "All accounts" button on host containers wider
+  than the reference size, top-aligned its gauges instead of using the available
+  height, and kept the weekly-change chart at a fixed height regardless of how much
+  room the column actually had. The header now has its own row, the gauge/alert
+  cluster is centered vertically, and the chart fills its grid row.
+- A proportionally thick ring on a small gauge (the 58px account-compare cards)
+  crowded a 3-digit percentage against the ring; the percentage now scales off the
+  ring-clear inner diameter instead of the gauge's outer size.
+- The "Sonnet weekly" / "Opus weekly" bars in live (Worker-connected) mode always
+  read 0% — Anthropic's usage API has no per-model breakdown; the fields the Worker
+  read never existed in the real response. Replaced with the API's actual 7-day
+  breakdown by usage surface (Claude Code / Chat / Cowork / Other). Local/manual
+  logging mode's real per-model Sonnet/Opus share is unaffected.
+
+### Changed
+
+- Updated `eslint` (10.11.0), `@eslint/js` (10.0.1), and `eslint-plugin-react-hooks`
+  (7.1.1). The stricter hook checks caught a handful of real issues: a ref written
+  during render instead of in an effect in two places, and a ref callback
+  reassigning a plain variable after render instead of using `useRef`.
+- Updated `@types/node` (22.20.4).
+
 ## [0.2.0] - 2026-09-22
 
 ### Changed
