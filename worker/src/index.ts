@@ -57,10 +57,16 @@ const decoder = new TextDecoder();
 
 class ReauthRequired extends Error {}
 
+function trimTrailingSlashes(value: string) {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end--;
+  return value.slice(0, end);
+}
+
 function allowedOrigins(env: Env) {
   return (env.ALLOWED_ORIGIN ?? "")
     .split(",")
-    .map((value) => value.trim().replace(/\/+$/, ""))
+    .map((value) => trimTrailingSlashes(value.trim()))
     .filter(Boolean);
 }
 
