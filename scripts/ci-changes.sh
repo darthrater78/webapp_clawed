@@ -14,7 +14,9 @@ all() {
   exit 0
 }
 
-[ -n "$base" ] && [ "$base" != 0000000000000000000000000000000000000000 ] || all "no base"
+if [ -z "$base" ] || [ "$base" = 0000000000000000000000000000000000000000 ]; then
+  all "no base"
+fi
 git cat-file -e "$base^{commit}" 2>/dev/null || all "base $base not in clone"
 
 changed=$(git diff --name-only "$base" HEAD)
