@@ -204,6 +204,8 @@ function base64Url(bytes: Uint8Array) {
 /** Builds the Claude sign-in link for this browser, with a fresh PKCE pair. */
 export async function createClaudeAuthRequest(): Promise<ClaudeAuthRequest> {
   const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)));
+  // Independent of the verifier: state is visible in the URL and in the code Claude shows.
+  const state = base64Url(crypto.getRandomValues(new Uint8Array(32)));
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
   const challenge = base64Url(new Uint8Array(digest));
   const url = new URL(CLAUDE_AUTHORIZE_URL);
@@ -214,8 +216,8 @@ export async function createClaudeAuthRequest(): Promise<ClaudeAuthRequest> {
   url.searchParams.set("scope", CLAUDE_SCOPE);
   url.searchParams.set("code_challenge", challenge);
   url.searchParams.set("code_challenge_method", "S256");
-  url.searchParams.set("state", verifier);
-  return { url: url.toString(), verifier, state: verifier };
+  url.searchParams.set("state", state);
+  return { url: url.toString(), verifier, state };
 }
 
 /** Claude shows `code#state`; accept either part order-safely. */
