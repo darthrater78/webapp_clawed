@@ -2,6 +2,8 @@
 
 Static Claude five-hour and weekly usage dashboard for full-page, side-panel, and adaptive widget contexts.
 
+[GitHub](https://github.com/darthrater78/webapp_clawed) · [Release notes for v0.2.2](https://github.com/darthrater78/webapp_clawed/releases/tag/v0.2.2)
+
 Based on [ha-clawdmeter](https://github.com/corgan2222/ha-clawdmeter) and [lovelace-clawdmeter](https://github.com/corgan2222/lovelace-clawdmeter) by Stefan Knaak (MIT). See [Credits](#credits).
 
 ## Static app build
@@ -80,6 +82,10 @@ In Clawdmeter, open setup (the sliders icon), enter the Worker URL and app key, 
 From `worker/` in the new version, run `npm ci && npm run deploy`. Storage, keys, enrolled accounts, and an origin set in the Cloudflare dashboard are all kept. Before updating, read [Updating an existing Worker](worker/README.md#updating-an-existing-worker). It covers checking the Worker name, what changes when updating from a Worker older than v0.1.0, and why a rollback is only safe before the first token refresh.
 
 Troubleshooting, the API, and security notes are in the [Worker README](worker/README.md).
+
+## Security architecture
+
+Claude tokens live only in the usage Worker, encrypted with AES-256-GCM and reachable only with a key that one browser holds. The app key is stored encrypted in the browser, and the static app makes no requests to any origin other than the Worker. What is trusted, who can do what, what is stored and how, the known limits, and a dated list of every security change are in [SECURITY.md](SECURITY.md).
 
 ## Development checks
 

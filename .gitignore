@@ -34,6 +34,8 @@ verify-screenshots
 
 # Dev Skills session state
 .claude/dev-skills-gates.md
+.dev-skills-gates.md
+.dev-skills-handoff.md
 
 # Release artifacts built by `npm run package`
 release/
