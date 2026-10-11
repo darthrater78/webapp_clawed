@@ -104,7 +104,9 @@ No Claude token is ever stored in, or sent to, the browser.
 
 - One lockfile per package (`package-lock.json`), installed with `npm ci`.
 - CI runs `npm audit --audit-level=high` for the app and the Worker on every
-  push and pull request.
+  push and pull request that changes anything other than documentation. A
+  docs-only change skips the build jobs, the audit included; Dependabot alerts
+  cover the gap.
 - Dependabot opens weekly updates for npm (both packages) and GitHub Actions,
   skipping versions less than a day old. Dependabot alerts are enabled on the
   repository.
@@ -133,6 +135,9 @@ No Claude token is ever stored in, or sent to, the browser.
 
 Newest first. One line per security issue fixed or risk accepted.
 
+- **2026-10-11. Risk accepted:** CI skips its build jobs, `npm audit` included,
+  for a change that only touches documentation. Such a change cannot alter a
+  dependency, and Dependabot alerts report new advisories in the meantime.
 - **2026-10-11, v0.2.2. Fixed:** the sign-in's `state` value was the PKCE
   verifier, so the verifier appeared in the sign-in URL and in the
   `code#state` string Claude shows. `state` is now an independent random

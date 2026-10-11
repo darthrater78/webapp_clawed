@@ -98,7 +98,7 @@ npm run verify:release  # headless-browser check: every layout size, no console
 npm run package         # release zips into release/ (commit first; see below)
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of these on every push and pull request, plus `npm audit` and a Worker bundle check.
+CI (`.github/workflows/ci.yml`) runs all of these on every push and pull request, plus `npm audit` and a Worker bundle check. A change that only touches documentation (`*.md`, other than `THIRD_PARTY_NOTICES.md`) skips them; `scripts/ci-changes.sh` makes that call.
 
 ## Releases
 

@@ -5,9 +5,11 @@ on:
     branches: ["**"]
     paths:
       - ".github/workflows/**"
+      - "scripts/ci-changes.sh"
   pull_request:
     paths:
       - ".github/workflows/**"
+      - "scripts/ci-changes.sh"
 
 permissions:
   contents: read
@@ -36,3 +38,7 @@ jobs:
 
       - name: Run actionlint
         run: ./actionlint -color
+
+      # The one shell script CI itself depends on; shellcheck ships on the runner.
+      - name: Run shellcheck on the change-detection script
+        run: shellcheck scripts/ci-changes.sh
