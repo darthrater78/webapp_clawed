@@ -110,6 +110,8 @@ Each version is published as a GitHub release with these assets:
 | `clawdmeter-v<version>-static-site.zip` | Pre-built static files, for a host that doesn't run a build step for you (e.g. plain S3/Pages hosting). Most platforms want the upload zip above, not this one.                                    |
 | `SHA256SUMS.txt`                        | Checksums for both zips.                                                                                                                                                                           |
 
+Releases after v0.2.2 also carry a signed provenance attestation for each zip. To check a download, run `gh attestation verify <zip> --repo darthrater78/webapp_clawed`.
+
 Each release's notes also lead with a one-line reminder of which asset to use, and the GitHub release page labels the assets themselves the same way.
 
 To release:
