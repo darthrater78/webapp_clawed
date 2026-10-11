@@ -22,7 +22,8 @@ const projectRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), ".."
 const root = path.join(projectRoot, "dist");
 const screenshotsDir = path.join(projectRoot, "verify-screenshots");
 const PORT = 4173;
-const ORIGIN = `http://localhost:${PORT}`;
+const HOST = "127.0.0.1";
+const ORIGIN = `http://${HOST}:${PORT}`;
 
 const CONTENT_TYPES = {
   ".html": "text/html",
@@ -39,11 +40,19 @@ const CONTENT_TYPES = {
 function startStaticServer() {
   return new Promise((resolve) => {
     const server = createServer(async (req, res) => {
-      const urlPath = decodeURIComponent((req.url ?? "/").split("?")[0]);
-      let filePath = path.join(root, urlPath === "/" ? "/index.html" : urlPath);
+      let urlPath = "/";
+      try {
+        urlPath = decodeURIComponent((req.url ?? "/").split("?")[0]);
+      } catch {
+        // A malformed escape is just another unknown path.
+      }
+      const shell = path.join(root, "index.html");
+      let filePath = path.resolve(root, `.${path.sep}${urlPath}`);
       // SPA fallback: an unknown path still gets the shell, at a 200, same as
       // a real static host's rewrite rule -- never a literal 404 response.
-      if (!existsSync(filePath) || urlPath.endsWith("/")) filePath = path.join(root, "index.html");
+      // A path that climbs out of dist/ is treated as unknown too.
+      const insideRoot = filePath.startsWith(root + path.sep);
+      if (!insideRoot || !existsSync(filePath) || urlPath.endsWith("/")) filePath = shell;
       try {
         const data = await readFile(filePath);
         const type = CONTENT_TYPES[path.extname(filePath)] ?? "application/octet-stream";
@@ -54,7 +63,8 @@ function startStaticServer() {
         res.end();
       }
     });
-    server.listen(PORT, () => resolve(server));
+    // Loopback only: this server must not be reachable from the network.
+    server.listen(PORT, HOST, () => resolve(server));
   });
 }
 

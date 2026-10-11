@@ -112,11 +112,16 @@ No Claude token is ever stored in, or sent to, the browser.
   repository.
 - Every workflow action is pinned to a commit SHA, with `contents: read` by
   default, no persisted checkout credentials, and job timeouts. Only the
-  release job gets `contents: write`. `lint-workflows.yml` runs actionlint
-  from a checksum-verified download.
+  release job gets `contents: write`, plus the permissions it needs to sign
+  an attestation. `lint-workflows.yml` runs actionlint from a
+  checksum-verified download.
+- A pull request that adds a dependency with a known High or Critical
+  advisory fails `dependency-review.yml`. CodeQL (GitHub's default setup)
+  scans the code and the workflows on every pull request and on `main`.
 - A release publishes only when the tag is on `main`, CI passed for that
   commit, and the tag matches both package versions. The release attaches the
-  zips CI built plus `SHA256SUMS.txt`.
+  zips CI built plus `SHA256SUMS.txt`, and from the release after v0.2.2 it
+  signs a provenance attestation for each zip.
 
 ### Known limits
 
@@ -135,6 +140,14 @@ No Claude token is ever stored in, or sent to, the browser.
 
 Newest first. One line per security issue fixed or risk accepted.
 
+- **2026-10-11. Fixed:** the local server inside `npm run verify:release`
+  listened on every network interface and would serve a file outside `dist/`
+  for a path containing `..`, for as long as the check ran. It now listens on
+  loopback only and serves nothing outside `dist/`. Found by CodeQL.
+- **2026-10-11. Fixed:** the Worker trimmed trailing slashes from
+  `ALLOWED_ORIGIN` with a regular expression that is slow on a long run of
+  slashes. The value is operator configuration, never request input; it is
+  now trimmed with a loop. Found by CodeQL.
 - **2026-10-11. Risk accepted:** CI skips its build jobs, `npm audit` included,
   for a change that only touches documentation. Such a change cannot alter a
   dependency, and Dependabot alerts report new advisories in the meantime.
