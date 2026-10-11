@@ -6,6 +6,22 @@ All notable changes to Clawdmeter are recorded here. The format follows
 upload zip (what the hosting platform builds) and a static-site zip (the
 static output).
 
+## [0.2.2] - 2026-10-11
+
+### Security
+
+- The Claude sign-in's `state` value is now an independent random value
+  instead of the PKCE verifier, and a pasted code whose `state` does not match
+  the sign-in the app started is rejected.
+- Updated `source-map-js` (1.2.2) in the app and `wrangler` (4.149.0) in the
+  Worker package, clearing High advisories in build and deploy tooling
+  (`source-map-js`, `sharp`, `undici`).
+
+### Added
+
+- `SECURITY.md`: the security architecture, with a dated list of security
+  changes. Linked from the README.
+
 ## [0.2.1] - 2026-09-22
 
 ### Fixed

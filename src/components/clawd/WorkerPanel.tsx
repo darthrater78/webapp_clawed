@@ -206,13 +206,15 @@ function EnrollForm({ meter, onDone }: { meter: Clawdmeter; onDone: () => void }
           if (!label.trim()) return setError("Give this account a name.");
           if (!auth) return setError("Open the Claude sign-in link first.");
           if (!parsed) return setError("Paste the code Claude showed you after approving.");
+          if (parsed.state && parsed.state !== auth.state)
+            return setError("That code is from a different sign-in. Open the sign-in link again.");
           setBusy(true);
           setError(null);
           await finish(
             await meter.worker.enrollWithCode({
               label: label.trim(),
               code: parsed.code,
-              state: parsed.state || auth.state,
+              state: auth.state,
               verifier: auth.verifier,
             }),
           );

@@ -9,7 +9,7 @@ The usage API access and token refresh follow [ha-clawdmeter](https://github.com
 ## How enrolment works
 
 1. An admin deploys this Worker once and hands out the app key.
-2. Each person enters the Worker address and app key in Clawdmeter. The app keeps the key in memory only, so it is asked for again after each page reload.
+2. Each person enters the Worker address and app key in Clawdmeter. The app saves the key encrypted in the browser, so it is normally entered once per browser.
 3. Each person adds their Claude account with **Sign in with Claude** (OAuth with PKCE). The Worker swaps the one-time code for tokens, encrypts them, and ties them to a random key that only that browser holds — nobody else can list or read those accounts. Pasted credential files are not accepted.
 
 ## Deploy (one command)
@@ -158,14 +158,16 @@ All requests carry `Authorization: Bearer <APP_SHARED_KEY>` and `X-Owner-Key: <p
 
 `GET /api/health` needs no key and returns only `{ ok, missing: [setting names] }`.
 
-| Method   | Path                  | Purpose                                                                                              |
-| -------- | --------------------- | ---------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/accounts`       | List this browser's enrolled accounts                                                                |
-| `POST`   | `/api/accounts/oauth` | Enrol by exchanging a sign-in code (`label`, `code`, `state`, `verifier`, `redirectUri`, `clientId`) |
-| `DELETE` | `/api/accounts/:id`   | Delete an account and its stored credentials                                                         |
-| `GET`    | `/api/usage/:id`      | Five-hour and weekly usage for one account                                                           |
+| Method   | Path                  | Purpose                                                                   |
+| -------- | --------------------- | ------------------------------------------------------------------------- |
+| `GET`    | `/api/accounts`       | List this browser's enrolled accounts                                     |
+| `POST`   | `/api/accounts/oauth` | Enrol by exchanging a sign-in code (`label`, `code`, `state`, `verifier`) |
+| `DELETE` | `/api/accounts/:id`   | Delete an account and its stored credentials                              |
+| `GET`    | `/api/usage/:id`      | Five-hour and weekly usage for one account                                |
 
 ## Security limitations
+
+The full design and a dated list of security changes are in [SECURITY.md](../SECURITY.md).
 
 - The app key only gates who may enrol; it does not reveal anyone's usage on its own.
 - Losing a browser's stored owner key means losing access to the accounts it enrolled — enrol them again.
